@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useState } from "react"
-import { Check, Mail, User, Link as LinkIcon } from "lucide-react"
+import { Check, Mail, User, Link as LinkIcon, Sparkles, Download } from "lucide-react"
 import { toast } from "sonner"
 
 interface WaitlistModalProps {
@@ -18,38 +18,42 @@ interface WaitlistModalProps {
   onClose: () => void
 }
 
-const TOOL_OPTIONS = [
-  "Obsidian", "Napkin AI", "Mem", "Otio", "Fabric", "mymind", "Notion", 
-  "Evernote", "Craft", "Me.bot", "Raindrop", "MyMemo", "logseq", "inkdrop", 
-  "Traverse", "Eraser", "MuseApp", "Milanote", "Supernotes", "others"
+const USE_CASE_OPTIONS = [
+  "Job Interviews", "Sales Calls", "Coding/Development", "Client Meetings", 
+  "Presentations", "Online Learning", "Research", "Writing", 
+  "Customer Support", "Language Learning", "Other"
 ]
 
 export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    linkedin: "",
-    currentTool: "",
-    reason: ""
+    company: "",
+    useCase: "",
+    experience: ""
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // Here you would typically send this data to your backend
-    console.log("Submitted data:", formData)
-    toast.success("Thanks for joining our waitlist! We'll be in touch soon.", {
+    console.log("Beta access request:", formData)
+    toast.success("Welcome to the Subtle beta! Check your email for download instructions.", {
       duration: 5000,
+      icon: <Sparkles className="w-5 h-5 text-primary" />,
     })
     onClose()
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] glass-panel">
         <DialogHeader>
-          <DialogTitle>Join Our Waitlist</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Download className="w-5 h-5 text-primary" />
+            Get Early Access to Subtle
+          </DialogTitle>
           <DialogDescription>
-            Help us understand your needs better and get early access.
+            Join the beta and experience invisible AI assistance today.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
@@ -83,52 +87,55 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="linkedin">LinkedIn URL</Label>
+            <Label htmlFor="company">Company (Optional)</Label>
             <div className="relative">
               <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                id="linkedin"
-                type="url"
+                id="company"
                 className="pl-10"
-                value={formData.linkedin}
-                onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
-                required
+                placeholder="Where do you work?"
+                value={formData.company}
+                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
               />
             </div>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="currentTool">Current Tool</Label>
+            <Label htmlFor="useCase">Primary Use Case</Label>
             <select
-              id="currentTool"
+              id="useCase"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              value={formData.currentTool}
-              onChange={(e) => setFormData({ ...formData, currentTool: e.target.value })}
+              value={formData.useCase}
+              onChange={(e) => setFormData({ ...formData, useCase: e.target.value })}
               required
             >
-              <option value="">Select a tool</option>
-              {TOOL_OPTIONS.map((tool) => (
-                <option key={tool} value={tool}>
-                  {tool}
+              <option value="">How will you use Subtle?</option>
+              {USE_CASE_OPTIONS.map((useCase) => (
+                <option key={useCase} value={useCase}>
+                  {useCase}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="reason">Why are you interested?</Label>
+            <Label htmlFor="experience">Tell us more (Optional)</Label>
             <textarea
-              id="reason"
-              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              value={formData.reason}
-              onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-              required
+              id="experience"
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              placeholder="Any specific features you're excited about?"
+              value={formData.experience}
+              onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
             />
           </div>
 
-          <Button type="submit" className="w-full">
-            <Check className="mr-2 h-4 w-4" /> Submit
+          <Button type="submit" className="w-full coral-glow">
+            <Sparkles className="mr-2 h-4 w-4" /> Get Beta Access
           </Button>
+          
+          <p className="text-xs text-center text-muted-foreground">
+            Free during beta • No credit card required • macOS 13.0+
+          </p>
         </form>
       </DialogContent>
     </Dialog>

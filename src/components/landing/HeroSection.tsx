@@ -70,7 +70,7 @@ export const HeroSection = ({
             onClick={() => setIsModalOpen(true)} 
             className="rounded-xl px-8 py-6 text-base font-medium bg-primary hover:bg-primary/90 transition-all duration-300 coral-glow"
           >
-            Download for macOS
+            Get Beta Access
             <ArrowRight className="ml-2 w-5 h-5" />
           </Button>
           <Button 

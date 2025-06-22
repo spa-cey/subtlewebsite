@@ -10,6 +10,8 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import Index from "./pages/Index";
 import WhyPage from "./pages/WhyPage";
 import HowPage from "./pages/HowPage";
+import FeaturesPage from "./pages/FeaturesPage";
+import DownloadPage from "./pages/DownloadPage";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Import from "./pages/Import";
@@ -60,6 +62,22 @@ const AppRoutes = () => {
         element={
           <PageTransition>
             <HowPage />
+          </PageTransition>
+        } 
+      />
+      <Route 
+        path="/features" 
+        element={
+          <PageTransition>
+            <FeaturesPage />
+          </PageTransition>
+        } 
+      />
+      <Route 
+        path="/download" 
+        element={
+          <PageTransition>
+            <DownloadPage />
           </PageTransition>
         } 
       />

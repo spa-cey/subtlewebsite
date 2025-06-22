@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Brain, LogIn, Search, Upload, User, Settings, LogOut, Moon, Sun, Table, Info, HelpCircle, Code } from 'lucide-react';
+import { Brain, Moon, Sun, Info, Download, Code } from 'lucide-react';
 import { useRippleEffect } from '@/lib/animations';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import AuthModal from '@/components/AuthModal';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -119,17 +117,7 @@ const SubMenuItem = ({ to, icon, label, active, onClick }: NavItemProps) => {
 
 export const Navbar = () => {
   const [active, setActive] = useState('overview');
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  
-  const handleOpenAuthModal = () => {
-    setIsAuthModalOpen(true);
-  };
-
-  const handleCloseAuthModal = () => {
-    setIsAuthModalOpen(false);
-  };
 
   const handleNavItemClick = (id: string) => {
     setActive(id);
@@ -138,18 +126,11 @@ export const Navbar = () => {
   const subtleSubmenu = [
     { to: '/', icon: <Info size={18} />, label: 'Overview', id: 'overview' },
     { to: '/features', icon: <Code size={18} />, label: 'Features', id: 'features' },
-    { to: '/download', icon: <HelpCircle size={18} />, label: 'Download', id: 'download' },
+    { to: '/download', icon: <Download size={18} />, label: 'Download', id: 'download' },
   ];
   
-  const authNavItems = [
-    { to: '/manage', icon: <Table size={20} />, label: 'Manage', id: 'manage' },
-    { to: '/search', icon: <Search size={20} />, label: 'Search', id: 'search' },
-    { to: '/import', icon: <Upload size={20} />, label: 'Import', id: 'import' },
-    { to: '/profile', icon: <User size={20} />, label: 'Profile', id: 'profile' },
-    { to: '/settings', icon: <Settings size={20} />, label: 'Settings', id: 'settings' },
-  ];
-
-  const navItems = isAuthenticated ? authNavItems : [];
+  // Remove auth items since Subtle doesn't have user accounts
+  const navItems = [];
 
   return (
     <>
@@ -204,45 +185,9 @@ export const Navbar = () => {
                 <p>Toggle {theme === 'dark' ? 'light' : 'dark'} mode</p>
               </TooltipContent>
             </Tooltip>
-            
-            {isAuthenticated ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-2 px-4 py-3 rounded-lg hover:bg-primary hover:text-primary-foreground"
-                    onClick={logout}
-                  >
-                    <LogOut size={20} />
-                    {active === 'logout' && <span className="font-medium">Logout</span>}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Logout</p>
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-2 px-4 py-3 rounded-lg hover:bg-primary hover:text-primary-foreground"
-                    onClick={handleOpenAuthModal}
-                  >
-                    <LogIn size={20} />
-                    {active === 'login' && <span className="font-medium">Login</span>}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Login</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
           </nav>
         </header>
       </TooltipProvider>
-      
-      <AuthModal isOpen={isAuthModalOpen} onClose={handleCloseAuthModal} />
     </>
   );
 };
