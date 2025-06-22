@@ -3,9 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useEffect } from "react";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Index from "./pages/Index";
 import WhyPage from "./pages/WhyPage";
@@ -18,6 +18,10 @@ import Import from "./pages/Import";
 import SearchPage from "./pages/SearchPage";
 import Settings from "./pages/Settings";
 import ManagePage from "./pages/ManagePage";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
+import AuthCallback from "./pages/AuthCallback";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
@@ -36,6 +40,28 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => {
       {children}
     </div>
   );
+};
+
+// Protected route wrapper
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
 };
 
 const AppRoutes = () => {
@@ -118,6 +144,40 @@ const AppRoutes = () => {
         element={
           <PageTransition>
             <Settings />
+          </PageTransition>
+        } 
+      />
+      <Route 
+        path="/login" 
+        element={
+          <PageTransition>
+            <Login />
+          </PageTransition>
+        } 
+      />
+      <Route 
+        path="/signup" 
+        element={
+          <PageTransition>
+            <Signup />
+          </PageTransition>
+        } 
+      />
+      <Route 
+        path="/dashboard" 
+        element={
+          <ProtectedRoute>
+            <PageTransition>
+              <Dashboard />
+            </PageTransition>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/auth/callback" 
+        element={
+          <PageTransition>
+            <AuthCallback />
           </PageTransition>
         } 
       />

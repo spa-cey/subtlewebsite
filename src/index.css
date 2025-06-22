@@ -5,45 +5,45 @@
  
 @layer base {
   :root {
-    /* Subtle Theme - Light Mode (actually dark, matching the app) */
-    --background: 240 7% 4%; /* charcoalDark #0A0A0B */
-    --foreground: 0 0% 92%; /* textPrimary */
+    /* Subtle Theme - Light Mode */
+    --background: 0 0% 98%; /* Light warm white */
+    --foreground: 240 7% 15%; /* Dark charcoal for text */
 
-    --card: 240 10% 8%; /* charcoalMedium #131316 */
-    --card-foreground: 0 0% 92%;
+    --card: 0 0% 100%; /* Pure white cards */
+    --card-foreground: 240 7% 15%;
  
-    --popover: 240 10% 8%;
-    --popover-foreground: 0 0% 92%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 7% 15%;
  
-    --primary: 0 100% 71%; /* coralAccent #FF6B6B */
-    --primary-foreground: 240 7% 4%; /* charcoalDark for contrast */
+    --primary: 0 100% 71%; /* coralAccent #FF6B6B - stays the same */
+    --primary-foreground: 0 0% 100%; /* White text on coral */
  
-    --secondary: 240 5% 12%; /* charcoalLight #1C1C1F */
-    --secondary-foreground: 0 0% 92%;
+    --secondary: 0 0% 96%; /* Light gray */
+    --secondary-foreground: 240 7% 15%;
  
-    --muted: 240 5% 12%;
-    --muted-foreground: 0 0% 70%; /* textSecondary */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%; /* Medium gray for muted text */
  
-    --accent: 0 100% 71%; /* coralAccent */
-    --accent-foreground: 240 7% 4%;
+    --accent: 0 100% 71%; /* coralAccent - stays the same */
+    --accent-foreground: 0 0% 100%;
  
-    --destructive: 2 68% 62%; /* statusError #EF5350 */
-    --destructive-foreground: 0 0% 92%;
+    --destructive: 2 68% 62%; /* statusError - stays the same */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 100% / 0.08; /* borderSubtle */
-    --input: 0 0% 100% / 0.08;
-    --ring: 0 100% 71% / 0.4; /* focusRing */
+    --border: 0 0% 0% / 0.08; /* Subtle dark borders */
+    --input: 0 0% 0% / 0.08;
+    --ring: 0 100% 71% / 0.4; /* focusRing - coral */
  
     --radius: 0.75rem;
     
-    /* Additional Subtle-specific variables */
-    --glass-light: 255 255 255 / 0.03;
-    --glass-base: 255 255 255 / 0.04;
-    --glass-medium: 255 255 255 / 0.06;
-    --glass-heavy: 255 255 255 / 0.08;
-    --coral-glow: 255 107 107 / 0.15;
-    --text-tertiary: 0 0% 50%;
-    --text-quaternary: 0 0% 30%;
+    /* Additional Subtle-specific variables for light mode */
+    --glass-light: 255 255 255 / 0.1; /* White glass with transparency */
+    --glass-base: 255 255 255 / 0.15;
+    --glass-medium: 255 255 255 / 0.2;
+    --glass-heavy: 255 255 255 / 0.25;
+    --coral-glow: 255 107 107 / 0.2; /* Slightly stronger glow for light mode */
+    --text-tertiary: 0 0% 55%;
+    --text-quaternary: 0 0% 70%;
   }
  
   .dark {
@@ -76,11 +76,11 @@
     --input: 0 0% 100% / 0.08;
     --ring: 0 100% 71% / 0.4; /* focusRing */
     
-    /* Additional Subtle-specific variables */
-    --glass-light: 255 255 255 / 0.03;
-    --glass-base: 255 255 255 / 0.04;
-    --glass-medium: 255 255 255 / 0.06;
-    --glass-heavy: 255 255 255 / 0.08;
+    /* Additional Subtle-specific variables for dark mode */
+    --glass-light: 255 255 255 / 0.05;
+    --glass-base: 255 255 255 / 0.08;
+    --glass-medium: 255 255 255 / 0.12;
+    --glass-heavy: 255 255 255 / 0.15;
     --coral-glow: 255 107 107 / 0.15;
     --text-tertiary: 0 0% 50%;
     --text-quaternary: 0 0% 30%;
@@ -103,27 +103,35 @@
 }
 
 .glass-panel {
-  @apply backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] shadow-lg;
+  @apply backdrop-blur-xl border shadow-lg;
+  background: rgb(var(--glass-base));
+  border-color: hsl(var(--border));
 }
 
 .glass-light {
-  @apply backdrop-blur-md bg-white/[0.03] border border-white/[0.05];
+  @apply backdrop-blur-md border;
+  background: rgb(var(--glass-light));
+  border-color: hsl(var(--border));
 }
 
 .glass-medium {
-  @apply backdrop-blur-lg bg-white/[0.06] border border-white/[0.08];
+  @apply backdrop-blur-lg border;
+  background: rgb(var(--glass-medium));
+  border-color: hsl(var(--border));
 }
 
 .glass-heavy {
-  @apply backdrop-blur-xl bg-white/[0.08] border border-white/[0.12];
+  @apply backdrop-blur-xl border;
+  background: rgb(var(--glass-heavy));
+  border-color: hsl(var(--border));
 }
 
 .coral-glow {
-  @apply shadow-[0_0_20px_rgba(255,107,107,0.15)] shadow-primary/20;
+  box-shadow: 0 0 20px rgb(var(--coral-glow)), 0 0 40px rgb(var(--coral-glow));
 }
 
 .subtle-gradient {
-  @apply bg-gradient-to-br from-white/[0.05] to-white/[0.02];
+  background: linear-gradient(135deg, rgb(var(--glass-light)), rgb(var(--glass-base)));
 }
 
 .neural-node {

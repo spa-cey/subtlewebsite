@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Brain, Moon, Sun, Info, Download, Code } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Brain, Moon, Sun, Info, Download, Code, User, LogOut } from 'lucide-react';
 import { useRippleEffect } from '@/lib/animations';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -118,10 +119,22 @@ const SubMenuItem = ({ to, icon, label, active, onClick }: NavItemProps) => {
 export const Navbar = () => {
   const [active, setActive] = useState('overview');
   const { theme, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
+  const location = useLocation();
 
   const handleNavItemClick = (id: string) => {
     setActive(id);
   };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  // Don't show navbar on auth pages
+  const authPages = ['/login', '/signup', '/auth/callback'];
+  if (authPages.includes(location.pathname)) {
+    return null;
+  }
 
   const subtleSubmenu = [
     { to: '/', icon: <Info size={18} />, label: 'Overview', id: 'overview' },
@@ -169,6 +182,54 @@ export const Navbar = () => {
                 onClick={() => handleNavItemClick(item.id)}
               />
             ))}
+            
+            {/* Auth buttons */}
+            {user ? (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-lg ml-1"
+                      asChild
+                    >
+                      <Link to="/dashboard">
+                        <User size={20} />
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Dashboard</p>
+                  </TooltipContent>
+                </Tooltip>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-lg"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut size={20} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Sign out</p>
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 ml-2">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/login">Sign In</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link to="/signup">Sign Up</Link>
+                </Button>
+              </div>
+            )}
             
             <Tooltip>
               <TooltipTrigger asChild>
