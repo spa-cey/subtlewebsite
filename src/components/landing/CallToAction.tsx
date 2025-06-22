@@ -1,12 +1,15 @@
 import { Button } from '@/components/ui/button';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { Download, MessageCircle, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 interface CallToActionProps {
   show: boolean;
 }
 export const CallToAction = ({
   show
 }: CallToActionProps) => {
+  const navigate = useNavigate();
+
   return <AnimatedTransition show={show} animation="slide-up" duration={600}>
       <div className="py-16 md:py-24 rounded-2xl text-center glass-heavy relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5 -z-10" />
@@ -22,6 +25,7 @@ export const CallToAction = ({
           <Button 
             size="lg" 
             className="rounded-xl px-8 py-6 text-base font-medium coral-glow"
+            onClick={() => navigate('/download')}
           >
             <Download className="mr-2 w-5 h-5" />
             Download for macOS
@@ -31,18 +35,20 @@ export const CallToAction = ({
             size="lg" 
             variant="outline" 
             className="rounded-xl px-8 py-6 text-base font-medium glass-light hover:glass-medium"
+            onClick={() => navigate('/features')}
           >
             <FileText className="mr-2 w-5 h-5" />
-            View Documentation
+            View Features
           </Button>
           
           <Button 
             size="lg" 
             variant="outline" 
             className="rounded-xl px-8 py-6 text-base font-medium glass-light hover:glass-medium"
+            onClick={() => window.open('mailto:support@gosubtle.app?subject=Support%20Request', '_blank')}
           >
             <MessageCircle className="mr-2 w-5 h-5" />
-            Join Discord
+            Contact Support
           </Button>
         </div>
         

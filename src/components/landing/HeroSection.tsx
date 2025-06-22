@@ -77,6 +77,13 @@ export const HeroSection = ({
             size="lg" 
             variant="outline" 
             className="rounded-xl px-8 py-6 text-base font-medium glass-light hover:glass-medium transition-all duration-300"
+            onClick={() => {
+              // Scroll to demo section instead of fake functionality
+              const demoSection = document.getElementById('demo-section');
+              if (demoSection) {
+                demoSection.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
           >
             Watch Demo
             <Eye className="ml-2 w-5 h-5" />

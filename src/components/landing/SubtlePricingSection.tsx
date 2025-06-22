@@ -3,12 +3,33 @@ import { Check, Sparkles, Zap, Crown, Apple } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface PricingSectionProps {
   show: boolean;
 }
 
 export const SubtlePricingSection = ({ show }: PricingSectionProps) => {
+  const navigate = useNavigate();
+
+  const handlePlanClick = (planName: string) => {
+    switch (planName) {
+      case 'Free':
+        // Navigate to download page for free plan
+        navigate('/download');
+        break;
+      case 'Pro':
+        // Navigate to signup with pro plan selection
+        navigate('/signup?plan=pro');
+        break;
+      case 'Enterprise':
+        // Open contact form or mailto for enterprise
+        window.open('mailto:sales@gosubtle.app?subject=Enterprise%20Plan%20Inquiry', '_blank');
+        break;
+      default:
+        navigate('/signup');
+    }
+  };
   const plans = [
     {
       name: "Free",
@@ -107,6 +128,7 @@ export const SubtlePricingSection = ({ show }: PricingSectionProps) => {
                     : "bg-primary text-white hover:bg-primary/90"
                 )}
                 size="lg"
+                onClick={() => handlePlanClick(plan.name)}
               >
                 {plan.ctaIcon && <Apple className="mr-2 h-5 w-5" />}
                 {plan.cta}

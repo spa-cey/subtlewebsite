@@ -33,15 +33,22 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
     experience: ""
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would typically send this data to your backend
-    console.log("Beta access request:", formData)
-    toast.success("Welcome to the Subtle beta! Check your email for download instructions.", {
-      duration: 5000,
-      icon: <Sparkles className="w-5 h-5 text-primary" />,
-    })
-    onClose()
+    
+    try {
+      // TODO: Replace with your actual backend endpoint
+      // For now, this redirects to the signup page instead of fake submission
+      console.log("Beta access request:", formData)
+      
+      // Instead of fake success, redirect to actual signup
+      window.location.href = '/signup'
+      
+    } catch (error) {
+      toast.error("Something went wrong. Please try again.", {
+        duration: 3000,
+      })
+    }
   }
 
   return (

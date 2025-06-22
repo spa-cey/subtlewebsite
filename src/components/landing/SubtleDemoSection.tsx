@@ -63,7 +63,7 @@ export const SubtleDemoSection = ({ show }: DemoSectionProps) => {
 
   return (
     <AnimatedTransition show={show} animation="slide-up" duration={600}>
-      <div className="py-16 md:py-24">
+      <div id="demo-section" className="py-16 md:py-24">
         <div className="flex flex-col items-center text-center gap-4 mb-16">
           <h2 className="text-4xl font-bold md:text-6xl">
             <span className="text-foreground">See Subtle in</span>{' '}

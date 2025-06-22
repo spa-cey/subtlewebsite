@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Eye, EyeOff, Github, Mail, Loader2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,9 @@ import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
 export default function Signup() {
+  const [searchParams] = useSearchParams()
+  const selectedPlan = searchParams.get('plan') || 'free'
+  
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -110,6 +113,11 @@ export default function Signup() {
           <p className="text-muted-foreground mt-2">
             Create your account
           </p>
+          {selectedPlan !== 'free' && (
+            <div className="mt-3 inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
+              Selected: {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} Plan
+            </div>
+          )}
         </div>
 
         <Card className="glass-panel border-0">
