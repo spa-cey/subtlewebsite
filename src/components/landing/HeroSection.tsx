@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Sparkles, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useState } from 'react';
@@ -11,33 +11,81 @@ export const HeroSection = ({
   showTitle
 }: HeroSectionProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<'scattered' | 'convergence' | 'organized'>('scattered');
-  const [heroText, setHeroText] = useState("All your notes, bookmarks, inspirations, articles and images in one single, private second brain, accessible anywhere, anytime.");
-  const handleSectionClick = (section: 'scattered' | 'convergence' | 'organized', text: string) => {
-    setActiveSection(section);
-    setHeroText(text);
-  };
+  const [activeFeature, setActiveFeature] = useState<'stealth' | 'ai' | 'productivity'>('stealth');
   return <div className="py-20 md:py-28 flex flex-col items-center text-center">
       <AnimatedTransition show={showTitle} animation="slide-up" duration={600}>
-        {/* Title first */}
-        <h1 className="text-4xl sm:text-5xl font-bold mb-6 bg-clip-text text-blue-600 md:text-7xl">
-          Your Personal AI Engine
-        </h1>
-        
-        {/* Interactive text second */}
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in" key={heroText}>
-          {heroText}
-        </p>
-        
-        {/* Diagram third */}
-        <div className="mb-8">
-          <DiagramComponent onSectionClick={handleSectionClick} activeSection={activeSection} />
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 glass-light">
+          <Sparkles className="w-4 h-4" />
+          <span>Stealth AI Assistant for macOS</span>
         </div>
         
-        {/* Call to action last */}
-        <Button size="lg" onClick={() => setIsModalOpen(true)} className="rounded-full px-8 py-6 text-base font-medium bg-primary hover:bg-primary/90 transition-all duration-300">
-          Join Waitlist
-        </Button>
+        {/* Title */}
+        <h1 className="text-5xl sm:text-6xl font-bold mb-6 md:text-7xl">
+          <span className="text-foreground">AI Assistance</span>
+          <br />
+          <span className="text-primary coral-glow">Only You Can See</span>
+        </h1>
+        
+        {/* Subtitle */}
+        <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-12 leading-relaxed">
+          Subtle is a sophisticated macOS menu bar app that provides contextual AI guidance through an invisible overlay.
+          Perfect for interviews, sales calls, coding sessions, and everyday productivity.
+        </p>
+        
+        {/* Feature highlights */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-12">
+          <button
+            onClick={() => setActiveFeature('stealth')}
+            className={`p-6 rounded-xl transition-all duration-300 text-left ${activeFeature === 'stealth' ? 'glass-medium border-primary/50' : 'glass-light hover:glass-medium'}`}
+          >
+            <EyeOff className="w-8 h-8 text-primary mb-3" />
+            <h3 className="font-semibold mb-2">Invisible Overlay</h3>
+            <p className="text-sm text-muted-foreground">Excluded from screen sharing & recordings</p>
+          </button>
+          
+          <button
+            onClick={() => setActiveFeature('ai')}
+            className={`p-6 rounded-xl transition-all duration-300 text-left ${activeFeature === 'ai' ? 'glass-medium border-primary/50' : 'glass-light hover:glass-medium'}`}
+          >
+            <Sparkles className="w-8 h-8 text-primary mb-3" />
+            <h3 className="font-semibold mb-2">Context-Aware AI</h3>
+            <p className="text-sm text-muted-foreground">Real-time screen & audio analysis</p>
+          </button>
+          
+          <button
+            onClick={() => setActiveFeature('productivity')}
+            className={`p-6 rounded-xl transition-all duration-300 text-left ${activeFeature === 'productivity' ? 'glass-medium border-primary/50' : 'glass-light hover:glass-medium'}`}
+          >
+            <Shield className="w-8 h-8 text-primary mb-3" />
+            <h3 className="font-semibold mb-2">Privacy First</h3>
+            <p className="text-sm text-muted-foreground">Local processing, no telemetry</p>
+          </button>
+        </div>
+        
+        {/* Call to action */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+          <Button 
+            size="lg" 
+            onClick={() => setIsModalOpen(true)} 
+            className="rounded-xl px-8 py-6 text-base font-medium bg-primary hover:bg-primary/90 transition-all duration-300 coral-glow"
+          >
+            Download for macOS
+            <ArrowRight className="ml-2 w-5 h-5" />
+          </Button>
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="rounded-xl px-8 py-6 text-base font-medium glass-light hover:glass-medium transition-all duration-300"
+          >
+            Watch Demo
+            <Eye className="ml-2 w-5 h-5" />
+          </Button>
+        </div>
+        
+        <p className="text-sm text-muted-foreground mt-4">
+          Requires macOS 13.0+ • Free during beta
+        </p>
 
         <WaitlistModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       </AnimatedTransition>

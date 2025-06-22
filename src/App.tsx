@@ -17,6 +17,7 @@ import SearchPage from "./pages/SearchPage";
 import Settings from "./pages/Settings";
 import ManagePage from "./pages/ManagePage";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 const queryClient = new QueryClient();
 
@@ -122,9 +123,12 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <div className="min-h-screen">
+            <div className="min-h-screen flex flex-col">
               <Navbar />
-              <AppRoutes />
+              <main className="flex-1">
+                <AppRoutes />
+              </main>
+              <Footer />
             </div>
           </BrowserRouter>
         </TooltipProvider>

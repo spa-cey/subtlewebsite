@@ -5,65 +5,85 @@
  
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Subtle Theme - Light Mode (actually dark, matching the app) */
+    --background: 240 7% 4%; /* charcoalDark #0A0A0B */
+    --foreground: 0 0% 92%; /* textPrimary */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 240 10% 8%; /* charcoalMedium #131316 */
+    --card-foreground: 0 0% 92%;
  
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 240 10% 8%;
+    --popover-foreground: 0 0% 92%;
  
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 100% 71%; /* coralAccent #FF6B6B */
+    --primary-foreground: 240 7% 4%; /* charcoalDark for contrast */
  
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 240 5% 12%; /* charcoalLight #1C1C1F */
+    --secondary-foreground: 0 0% 92%;
  
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 240 5% 12%;
+    --muted-foreground: 0 0% 70%; /* textSecondary */
  
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 0 100% 71%; /* coralAccent */
+    --accent-foreground: 240 7% 4%;
  
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 2 68% 62%; /* statusError #EF5350 */
+    --destructive-foreground: 0 0% 92%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 0 0% 100% / 0.08; /* borderSubtle */
+    --input: 0 0% 100% / 0.08;
+    --ring: 0 100% 71% / 0.4; /* focusRing */
  
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+    
+    /* Additional Subtle-specific variables */
+    --glass-light: 255 255 255 / 0.03;
+    --glass-base: 255 255 255 / 0.04;
+    --glass-medium: 255 255 255 / 0.06;
+    --glass-heavy: 255 255 255 / 0.08;
+    --coral-glow: 255 107 107 / 0.15;
+    --text-tertiary: 0 0% 50%;
+    --text-quaternary: 0 0% 30%;
   }
  
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Subtle Theme - Dark Mode (same as light for consistency) */
+    --background: 240 7% 4%; /* charcoalDark #0A0A0B */
+    --foreground: 0 0% 92%; /* textPrimary */
  
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 10% 8%; /* charcoalMedium #131316 */
+    --card-foreground: 0 0% 92%;
  
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 10% 8%;
+    --popover-foreground: 0 0% 92%;
  
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 100% 71%; /* coralAccent #FF6B6B */
+    --primary-foreground: 240 7% 4%;
  
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 5% 12%; /* charcoalLight #1C1C1F */
+    --secondary-foreground: 0 0% 92%;
  
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 240 5% 12%;
+    --muted-foreground: 0 0% 70%; /* textSecondary */
  
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 100% 71%; /* coralAccent */
+    --accent-foreground: 240 7% 4%;
  
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 2 68% 62%; /* statusError #EF5350 */
+    --destructive-foreground: 0 0% 92%;
  
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 0 0% 100% / 0.08; /* borderSubtle */
+    --input: 0 0% 100% / 0.08;
+    --ring: 0 100% 71% / 0.4; /* focusRing */
+    
+    /* Additional Subtle-specific variables */
+    --glass-light: 255 255 255 / 0.03;
+    --glass-base: 255 255 255 / 0.04;
+    --glass-medium: 255 255 255 / 0.06;
+    --glass-heavy: 255 255 255 / 0.08;
+    --coral-glow: 255 107 107 / 0.15;
+    --text-tertiary: 0 0% 50%;
+    --text-quaternary: 0 0% 30%;
   }
 }
 
@@ -83,7 +103,27 @@
 }
 
 .glass-panel {
-  @apply backdrop-blur-md bg-card/80 border border-border/50 shadow-sm;
+  @apply backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] shadow-lg;
+}
+
+.glass-light {
+  @apply backdrop-blur-md bg-white/[0.03] border border-white/[0.05];
+}
+
+.glass-medium {
+  @apply backdrop-blur-lg bg-white/[0.06] border border-white/[0.08];
+}
+
+.glass-heavy {
+  @apply backdrop-blur-xl bg-white/[0.08] border border-white/[0.12];
+}
+
+.coral-glow {
+  @apply shadow-[0_0_20px_rgba(255,107,107,0.15)] shadow-primary/20;
+}
+
+.subtle-gradient {
+  @apply bg-gradient-to-br from-white/[0.05] to-white/[0.02];
 }
 
 .neural-node {

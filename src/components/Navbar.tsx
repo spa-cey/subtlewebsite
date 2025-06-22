@@ -118,7 +118,7 @@ const SubMenuItem = ({ to, icon, label, active, onClick }: NavItemProps) => {
 };
 
 export const Navbar = () => {
-  const [active, setActive] = useState('what');
+  const [active, setActive] = useState('overview');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -135,10 +135,10 @@ export const Navbar = () => {
     setActive(id);
   };
 
-  const cortexSubmenu = [
-    { to: '/', icon: <Info size={18} />, label: 'What', id: 'what' },
-    { to: '/why', icon: <HelpCircle size={18} />, label: 'Why', id: 'why' },
-    { to: '/how', icon: <Code size={18} />, label: 'How', id: 'how' },
+  const subtleSubmenu = [
+    { to: '/', icon: <Info size={18} />, label: 'Overview', id: 'overview' },
+    { to: '/features', icon: <Code size={18} />, label: 'Features', id: 'features' },
+    { to: '/download', icon: <HelpCircle size={18} />, label: 'Download', id: 'download' },
   ];
   
   const authNavItems = [
@@ -156,16 +156,16 @@ export const Navbar = () => {
       <TooltipProvider>
         <header className="glass-panel fixed top-6 left-1/2 transform -translate-x-1/2 z-40 rounded-lg px-1 py-1">
           <nav className="flex items-center">
-            {/* Cortex with submenu */}
+            {/* Subtle with submenu */}
             <NavItem
               to="#"
               icon={<Brain size={20} />}
-              label="Cortex"
-              active={['what', 'why', 'how'].includes(active)}
+              label="Subtle"
+              active={['overview', 'features', 'download'].includes(active)}
               onClick={() => {}}
               hasSubmenu={true}
             >
-              {cortexSubmenu.map((item) => (
+              {subtleSubmenu.map((item) => (
                 <SubMenuItem
                   key={item.id}
                   to={item.to}
