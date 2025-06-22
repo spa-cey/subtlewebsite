@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a React-based web application built with Vite, TypeScript, and Tailwind CSS. It was created using Lovable.dev and features a modern SaaS/product website with landing pages, user management, and various UI components.
+This is a React-based web application built with Vite, TypeScript, and Tailwind CSS. It features a modern SaaS/product website for Subtle, a premium macOS AI assistant with landing pages and various UI components.
 
 ## Essential Commands
 
@@ -65,6 +65,7 @@ QueryClientProvider
 - No testing framework configured
 - No environment variables setup
 - Waitlist form only logs to console (TODO: backend integration)
+- No user authentication system implemented
 
 ### File Structure Patterns
 

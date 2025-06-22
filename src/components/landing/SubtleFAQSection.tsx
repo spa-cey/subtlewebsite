@@ -22,12 +22,12 @@ export const SubtleFAQSection = ({ show }: FAQSectionProps) => {
       answer: "Subtle requires macOS 13.0 (Ventura) or later and works on both Apple Silicon and Intel Macs. You'll need about 100MB of free disk space and must grant screen recording and microphone permissions for full functionality."
     },
     {
-      question: "Do I need my own OpenAI API key?",
-      answer: "Yes, currently you need an Azure OpenAI endpoint and API key. This ensures your data stays private and you have full control over costs. We're exploring options for a managed service in the future."
+      question: "Do I need my own API key?",
+      answer: "No! With our Pro and Enterprise plans, we handle all the AI infrastructure for you. Just sign in and start using Subtle immediately. The Free plan uses limited models that we provide at no cost."
     },
     {
       question: "Is my data private and secure?",
-      answer: "Absolutely. Subtle processes everything locally by default. No telemetry or analytics are collected. Your Azure OpenAI credentials are stored securely in the macOS keychain, and all API calls go directly from your Mac to Azure."
+      answer: "Absolutely. Subtle processes everything locally on your Mac. Screen captures and audio never leave your device unless you're using AI features. With Pro/Enterprise plans, all API calls are encrypted and we never store your conversations or screen content."
     },
     {
       question: "Can I use Subtle for job interviews?",
@@ -42,16 +42,16 @@ export const SubtleFAQSection = ({ show }: FAQSectionProps) => {
       answer: "Subtle includes 5 specialized personas: General (everyday assistance), Technical (coding and engineering), Creative (writing and design), Business (sales and strategy), and Research (academic and analysis). Each is optimized for different types of tasks."
     },
     {
-      question: "Is Subtle open source?",
-      answer: "Yes! Subtle is fully open source under the MIT license. You can view the source code, contribute improvements, or even fork it for your own needs. We believe in transparency and community-driven development."
+      question: "How is Subtle different from other AI assistants?",
+      answer: "Subtle is the only AI assistant that's completely invisible to screen sharing and recording software. It provides real-time, context-aware assistance based on what's on your screen and what you're hearing, all while remaining hidden from others."
     },
     {
       question: "How do I install and set up Subtle?",
-      answer: "Simply download Subtle from our GitHub releases, drag it to your Applications folder, and launch it. You'll go through a quick onboarding to grant necessary permissions and configure your Azure OpenAI settings. The whole process takes under 5 minutes."
+      answer: "Simply download Subtle, drag it to your Applications folder, and launch it. You'll go through a quick onboarding to grant necessary permissions. With our Pro plan, you don't need any API keys - just sign in and start using Subtle immediately."
     },
     {
       question: "What's the pricing model?",
-      answer: "Subtle is free during the beta period. You only pay for your own Azure OpenAI API usage. We're considering a freemium model for the future with optional premium features, but the core app will always have a free tier."
+      answer: "Subtle offers three tiers: Free ($0/mo) with 5 pro responses per day, Pro ($20/mo) with unlimited responses and latest models, and Enterprise (custom pricing) for teams needing full customization. All plans include our core stealth features."
     }
   ];
 

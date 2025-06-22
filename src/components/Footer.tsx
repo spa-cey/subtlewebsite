@@ -13,9 +13,9 @@ export const Footer = () => {
     ],
     developers: [
       { label: 'Documentation', href: '#' },
-      { label: 'GitHub', href: 'https://github.com/subtle-app', external: true },
       { label: 'API Reference', href: '#' },
-      { label: 'Contributing', href: '#' },
+      { label: 'SDK', href: '#' },
+      { label: 'Integrations', href: '#' },
     ],
     company: [
       { label: 'About', href: '#' },
@@ -24,8 +24,8 @@ export const Footer = () => {
       { label: 'Security', href: '#' },
     ],
     support: [
+      { label: 'Help Center', href: '#' },
       { label: 'Discord Community', href: '#', external: true },
-      { label: 'GitHub Issues', href: '#', external: true },
       { label: 'Email Support', href: 'mailto:support@subtle.app' },
       { label: 'FAQ', href: '#' },
     ],
@@ -99,7 +99,7 @@ export const Footer = () => {
               </div>
               <div className="flex items-center gap-1">
                 <FileText className="h-3 w-3" />
-                <span>Open Source</span>
+                <span>Secure by Design</span>
               </div>
             </div>
             

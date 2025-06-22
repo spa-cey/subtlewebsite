@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
-import { Download, Github, MessageCircle } from 'lucide-react';
+import { Download, MessageCircle, FileText } from 'lucide-react';
 interface CallToActionProps {
   show: boolean;
 }
@@ -32,8 +32,8 @@ export const CallToAction = ({
             variant="outline" 
             className="rounded-xl px-8 py-6 text-base font-medium glass-light hover:glass-medium"
           >
-            <Github className="mr-2 w-5 h-5" />
-            View on GitHub
+            <FileText className="mr-2 w-5 h-5" />
+            View Documentation
           </Button>
           
           <Button 
@@ -47,7 +47,7 @@ export const CallToAction = ({
         </div>
         
         <p className="text-sm text-muted-foreground mt-6">
-          Free during beta • macOS 13.0+ required • Open source
+          Free tier available • macOS 13.0+ required • Privacy focused
         </p>
       </div>
     </AnimatedTransition>;

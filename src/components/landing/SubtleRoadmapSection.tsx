@@ -191,19 +191,19 @@ export const SubtleRoadmapSection = ({ show }: RoadmapSectionProps) => {
           
           <div className="mt-8 text-center">
             <p className="text-sm text-muted-foreground mb-4">
-              Want to influence our roadmap?
+              Help shape the future of Subtle
             </p>
             <div className="flex gap-4 justify-center">
               <a href="#" className="text-primary hover:underline text-sm">
-                Vote on features
+                Request features
               </a>
               <span className="text-muted-foreground">•</span>
               <a href="#" className="text-primary hover:underline text-sm">
-                Submit ideas
+                Join our community
               </a>
               <span className="text-muted-foreground">•</span>
               <a href="#" className="text-primary hover:underline text-sm">
-                Join discussions
+                Give feedback
               </a>
             </div>
           </div>

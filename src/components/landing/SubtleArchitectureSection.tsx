@@ -206,16 +206,16 @@ final class DashboardViewModel: ObservableObject {
         {/* Bottom CTA */}
         <div className="mt-16 text-center">
           <p className="text-lg text-muted-foreground mb-6">
-            Want to explore the codebase?
+            Want to learn more about our architecture?
           </p>
           <div className="flex gap-4 justify-center">
             <Card className="glass-light px-6 py-3 inline-flex items-center gap-2 hover:glass-medium transition-all cursor-pointer">
-              <GitBranch className="w-5 h-5 text-primary" />
-              <span>View on GitHub</span>
+              <Terminal className="w-5 h-5 text-primary" />
+              <span>Technical Documentation</span>
             </Card>
             <Card className="glass-light px-6 py-3 inline-flex items-center gap-2 hover:glass-medium transition-all cursor-pointer">
-              <Terminal className="w-5 h-5 text-primary" />
-              <span>Read the Docs</span>
+              <GitBranch className="w-5 h-5 text-primary" />
+              <span>API Reference</span>
             </Card>
           </div>
         </div>

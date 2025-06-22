@@ -10,7 +10,7 @@ import { SubtleArchitectureSection } from '@/components/landing/SubtleArchitectu
 import { SubtleInstallSection } from '@/components/landing/SubtleInstallSection';
 import { SubtlePricingSection } from '@/components/landing/SubtlePricingSection';
 import { TestimonialsSection } from '@/components/landing/TestimonialsSection';
-import { SubtleGitHubSection } from '@/components/landing/SubtleGitHubSection';
+import { SubtleCommunitySection } from '@/components/landing/SubtleCommunitySection';
 import { SubtleRoadmapSection } from '@/components/landing/SubtleRoadmapSection';
 import { SubtleFAQSection } from '@/components/landing/SubtleFAQSection';
 import { CallToAction } from '@/components/landing/CallToAction';
@@ -28,7 +28,7 @@ const Index = () => {
   const showInstall = useAnimateIn(false, 1800);
   const showPricing = useAnimateIn(false, 2100);
   const showTestimonials = useAnimateIn(false, 2400);
-  const showGitHub = useAnimateIn(false, 2700);
+  const showCommunity = useAnimateIn(false, 2700);
   const showRoadmap = useAnimateIn(false, 3000);
   const showFAQ = useAnimateIn(false, 3300);
   const showCallToAction = useAnimateIn(false, 3600);
@@ -80,8 +80,8 @@ const Index = () => {
           {/* Testimonials Section */}
           <TestimonialsSection showTestimonials={showTestimonials} />
           
-          {/* GitHub Section */}
-          <SubtleGitHubSection show={showGitHub} />
+          {/* Community Section */}
+          <SubtleCommunitySection show={showCommunity} />
           
           {/* Roadmap Section */}
           <SubtleRoadmapSection show={showRoadmap} />

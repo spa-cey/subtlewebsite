@@ -1,5 +1,5 @@
 import { AnimatedTransition } from '@/components/AnimatedTransition';
-import { Check, Sparkles, Zap, Crown } from 'lucide-react';
+import { Check, Sparkles, Zap, Crown, Apple } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -11,69 +11,58 @@ interface PricingSectionProps {
 export const SubtlePricingSection = ({ show }: PricingSectionProps) => {
   const plans = [
     {
-      name: "Open Source",
-      price: "Free",
-      period: "forever",
-      description: "Perfect for developers who want to customize and self-host",
+      name: "Free",
+      price: "$0",
+      period: "/mo",
+      description: "Get a taste for how Subtle works with a few responses on us.",
       icon: <Sparkles className="w-6 h-6" />,
       features: [
-        "Full source code access",
-        "All core features",
-        "Community support",
-        "Self-hosted",
-        "MIT License",
-        "Contribute to development"
+        { text: "5 pro responses per day", included: true },
+        { text: "Unlimited access to free models", included: true, badge: "GPT-4.0-mini" },
+        { text: "100 character output limit", included: true },
+        { text: "Sees your screen, hears your audio", included: true },
+        { text: "Custom system prompt", included: true },
+        { text: "Community support only", included: true }
       ],
-      limitations: [
-        "Bring your own Azure OpenAI key",
-        "No priority support",
-        "Manual updates"
-      ],
-      cta: "View on GitHub",
+      cta: "Download for Mac",
+      ctaIcon: true,
       highlighted: false
     },
     {
-      name: "Beta Access",
-      price: "Free",
-      period: "during beta",
-      description: "Early access to the latest features and improvements",
+      name: "Pro",
+      price: "$20",
+      period: "/mo",
+      description: "Unlimited access to Subtle. Use the latest models, get full response output, and play with your own custom prompts.",
       icon: <Zap className="w-6 h-6" />,
       features: [
-        "Pre-built releases",
-        "Automatic updates",
-        "Beta features first",
-        "Discord priority channel",
-        "Bug report priority",
-        "Feature request voting"
+        { text: "Unlimited pro responses", included: true },
+        { text: "Unlimited access to latest models", included: true, badge: "Claude-3.7 GPT-4.1" },
+        { text: "Full access to conversations dashboard", included: true },
+        { text: "Priority support", included: true },
+        { text: "Plus everything in free", included: true, isPlus: true }
       ],
-      limitations: [
-        "Still need Azure OpenAI key",
-        "Beta stability",
-        "Limited to macOS"
-      ],
-      cta: "Download Beta",
-      highlighted: true
+      cta: "Subscribe",
+      highlighted: false
     },
     {
-      name: "Pro (Coming Soon)",
-      price: "$19",
-      period: "/month",
-      description: "For professionals who want a fully managed experience",
+      name: "Enterprise",
+      price: "Custom",
+      period: "",
+      description: "Specifically made for teams who need full customization.",
       icon: <Crown className="w-6 h-6" />,
       features: [
-        "Managed AI API included",
-        "Priority support",
-        "Custom AI personas",
-        "Advanced analytics",
-        "Team collaboration",
-        "API access",
-        "Cloud sync & backup",
-        "Early access features"
+        { text: "Custom integrations", included: true, badge: "Coming soon" },
+        { text: "User provisioning & role-based access", included: true },
+        { text: "Advanced Post-call analytics", included: true },
+        { text: "Single sign-on", included: true, badge: "IDP/SSO" },
+        { text: "Advanced security features", included: true },
+        { text: "Centralized billing", included: true },
+        { text: "Usage analytics & reporting dashboard", included: true },
+        { text: "Plus Everything in pro", included: true, isPlus: true }
       ],
-      limitations: [],
-      cta: "Join Waitlist",
+      cta: "Talk to Sales",
       highlighted: false,
-      comingSoon: true
+      isDark: true
     }
   ];
 
@@ -90,95 +79,74 @@ export const SubtlePricingSection = ({ show }: PricingSectionProps) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {plans.map((plan, index) => (
             <Card 
               key={index} 
               className={cn(
-                "relative p-8 transition-all duration-300",
-                plan.highlighted 
-                  ? "glass-medium border-primary/50 coral-glow scale-105" 
-                  : "glass-light hover:glass-medium"
+                "relative p-8 h-full flex flex-col",
+                plan.isDark 
+                  ? "bg-background border-border" 
+                  : "glass-light border-border/50"
               )}
             >
-              {plan.highlighted && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-primary-foreground text-sm font-medium rounded-full">
-                  Recommended
+              <div className="mb-8">
+                <h3 className="text-4xl font-bold mb-1">{plan.name}</h3>
+                <div className="flex items-baseline gap-1 mb-4">
+                  <span className="text-4xl font-normal">{plan.price}</span>
+                  {plan.period && <span className="text-2xl text-muted-foreground">{plan.period}</span>}
                 </div>
-              )}
-              
-              {plan.comingSoon && (
-                <div className="absolute -top-4 right-4 px-3 py-1 bg-primary/20 text-primary text-sm font-medium rounded-full">
-                  Coming Soon
-                </div>
-              )}
-
-              <div className="text-center mb-6">
-                <div className="inline-flex p-3 rounded-xl bg-primary/10 text-primary mb-4">
-                  {plan.icon}
-                </div>
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <div className="mb-3">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground ml-1">{plan.period}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">{plan.description}</p>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                {plan.features.map((feature, idx) => (
-                  <div key={idx} className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-green-500 mt-0.5" />
-                    <span className="text-sm">{feature}</span>
-                  </div>
-                ))}
-                
-                {plan.limitations.length > 0 && (
-                  <>
-                    <div className="border-t border-border/50 my-4" />
-                    {plan.limitations.map((limitation, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <span className="w-5 h-5 text-muted-foreground mt-0.5 text-center">•</span>
-                        <span className="text-sm text-muted-foreground">{limitation}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
+                <p className="text-muted-foreground">{plan.description}</p>
               </div>
 
               <Button 
                 className={cn(
-                  "w-full rounded-xl",
-                  plan.highlighted ? "coral-glow" : "",
-                  plan.comingSoon ? "opacity-75" : ""
+                  "w-full rounded-full py-6 mb-8 text-base font-medium",
+                  plan.isDark 
+                    ? "bg-white text-black hover:bg-white/90" 
+                    : "bg-primary text-white hover:bg-primary/90"
                 )}
-                variant={plan.highlighted ? "default" : "outline"}
-                disabled={plan.comingSoon}
+                size="lg"
               >
+                {plan.ctaIcon && <Apple className="mr-2 h-5 w-5" />}
                 {plan.cta}
               </Button>
+
+              <div className="space-y-4 flex-1">
+                {plan.features.map((feature, idx) => (
+                  <div key={idx} className={cn(
+                    "flex items-start gap-3",
+                    feature.isPlus && "pt-4 border-t border-border/50"
+                  )}>
+                    <Check className={cn(
+                      "w-5 h-5 mt-0.5 shrink-0",
+                      plan.isDark ? "text-white" : "text-green-500"
+                    )} />
+                    <div className="flex-1">
+                      <span className={cn(
+                        "text-sm",
+                        plan.isDark ? "text-white/90" : "text-foreground"
+                      )}>
+                        {feature.text}
+                      </span>
+                      {feature.badge && (
+                        <span className={cn(
+                          "ml-2 inline-flex px-2 py-0.5 text-xs rounded-full",
+                          feature.badge === "Coming soon" 
+                            ? "bg-muted text-muted-foreground" 
+                            : "bg-green-500/20 text-green-600"
+                        )}>
+                          {feature.badge}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </Card>
           ))}
         </div>
 
-        {/* Additional info */}
-        <div className="mt-16 text-center max-w-3xl mx-auto">
-          <Card className="glass-light p-8">
-            <h3 className="text-xl font-semibold mb-4">About Azure OpenAI Keys</h3>
-            <p className="text-muted-foreground mb-4">
-              Currently, Subtle requires you to bring your own Azure OpenAI API key. This ensures maximum privacy 
-              and control over your data. Your API calls go directly from your Mac to Azure, and we never see your data.
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Button variant="outline" size="sm" className="rounded-lg">
-                Azure Setup Guide
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-lg">
-                Pricing Calculator
-              </Button>
-            </div>
-          </Card>
-        </div>
       </div>
     </AnimatedTransition>
   );

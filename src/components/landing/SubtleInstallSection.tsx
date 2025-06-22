@@ -22,7 +22,7 @@ export const SubtleInstallSection = ({ show }: InstallSectionProps) => {
     {
       icon: <Download className="w-6 h-6" />,
       title: "Download Subtle",
-      description: "Get the latest version from our GitHub releases"
+      description: "Get the latest version from our website"
     },
     {
       icon: <Settings className="w-6 h-6" />,
@@ -31,8 +31,8 @@ export const SubtleInstallSection = ({ show }: InstallSectionProps) => {
     },
     {
       icon: <Key className="w-6 h-6" />,
-      title: "Configure Azure OpenAI",
-      description: "Add your API endpoint and key in settings"
+      title: "Sign In",
+      description: "Create your account or sign in to start using AI features"
     },
     {
       icon: <Rocket className="w-6 h-6" />,
@@ -121,21 +121,21 @@ export const SubtleInstallSection = ({ show }: InstallSectionProps) => {
         {/* Additional info */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           <Card className="glass-light p-6 text-center">
-            <h4 className="font-semibold mb-2">Open Source</h4>
+            <h4 className="font-semibold mb-2">Secure & Private</h4>
             <p className="text-sm text-muted-foreground">
-              View the source code and contribute on GitHub
+              Your data stays on your device unless you're using AI features
             </p>
           </Card>
           <Card className="glass-light p-6 text-center">
             <h4 className="font-semibold mb-2">Regular Updates</h4>
             <p className="text-sm text-muted-foreground">
-              New features and improvements every week
+              New features and improvements delivered automatically
             </p>
           </Card>
           <Card className="glass-light p-6 text-center">
-            <h4 className="font-semibold mb-2">Community Support</h4>
+            <h4 className="font-semibold mb-2">Expert Support</h4>
             <p className="text-sm text-muted-foreground">
-              Join our Discord for help and discussions
+              Get help from our team and active community
             </p>
           </Card>
         </div>
