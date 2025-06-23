@@ -12,13 +12,14 @@ export const HeroSection = ({
 }: HeroSectionProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeFeature, setActiveFeature] = useState<'stealth' | 'ai' | 'productivity'>('stealth');
-  return <div className="py-20 md:py-28 flex flex-col items-center text-center">
+  return <div className="py-12 md:py-16 flex flex-col items-center text-center">
       <AnimatedTransition show={showTitle} animation="slide-up" duration={600}>
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 glass-light">
-          <Sparkles className="w-4 h-4" />
-          <span>Stealth AI Assistant for macOS</span>
-        </div>
+        {/* Logo */}
+        <img 
+          src="/Subtle_LOGO-nobackground.png" 
+          alt="Subtle" 
+          className="w-20 h-20 mb-6 mx-auto"
+        />
         
         {/* Title */}
         <h1 className="text-5xl sm:text-6xl font-bold mb-6 md:text-7xl">

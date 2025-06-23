@@ -153,7 +153,7 @@ export const Navbar = () => {
             {/* Subtle with submenu */}
             <NavItem
               to="#"
-              icon={<Brain size={20} />}
+              icon={<img src="/Subtle_LOGO-nobackground.png" alt="Subtle" className="w-6 h-6" />}
               label="Subtle"
               active={['overview', 'features', 'download'].includes(active)}
               onClick={() => {}}

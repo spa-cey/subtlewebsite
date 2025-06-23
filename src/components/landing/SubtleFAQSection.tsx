@@ -6,12 +6,16 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Card } from '@/components/ui/card';
+import { HelpCircle, MessageCircle, BookOpen, Mail } from 'lucide-react';
+import { useState } from 'react';
 
 interface FAQSectionProps {
   show: boolean;
 }
 
 export const SubtleFAQSection = ({ show }: FAQSectionProps) => {
+  const [openItem, setOpenItem] = useState<string | undefined>(undefined);
+  
   const faqs = [
     {
       question: "How is Subtle invisible to screen sharing?",
@@ -58,7 +62,7 @@ export const SubtleFAQSection = ({ show }: FAQSectionProps) => {
   return (
     <AnimatedTransition show={show} animation="slide-up" duration={600}>
       <div className="py-16 md:py-24">
-        <div className="flex flex-col items-center gap-4 mb-12 text-center">
+        <div className="flex flex-col items-center gap-4 mb-16 text-center">
           <h2 className="text-4xl font-bold md:text-6xl">
             <span className="text-foreground">Frequently Asked</span>{' '}
             <span className="text-primary coral-glow">Questions</span>
@@ -68,47 +72,110 @@ export const SubtleFAQSection = ({ show }: FAQSectionProps) => {
           </p>
         </div>
 
-        <Card className="glass-panel max-w-3xl mx-auto">
-          <Accordion type="single" collapsible className="w-full">
-            {faqs.map((faq, index) => (
-              <AccordionItem key={index} value={`item-${index}`} className="border-border/50">
-                <AccordionTrigger className="text-left hover:text-primary transition-colors">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </Card>
-
-        <div className="mt-12 text-center">
-          <p className="text-muted-foreground mb-4">
-            Still have questions?
-          </p>
-          <div className="flex gap-4 justify-center">
-            <a 
-              href="#" 
-              className="text-primary hover:underline"
-            >
-              Join our Discord
-            </a>
-            <span className="text-muted-foreground">•</span>
-            <a 
-              href="#" 
-              className="text-primary hover:underline"
-            >
-              Check the docs
-            </a>
-            <span className="text-muted-foreground">•</span>
-            <a 
-              href="mailto:support@subtle.app" 
-              className="text-primary hover:underline"
-            >
-              Email support
-            </a>
+        <div className="relative max-w-4xl mx-auto">
+          {/* Background glow */}
+          <div className="absolute inset-0 bg-primary/5 blur-3xl -z-10"></div>
+          
+          {/* FAQ Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              {faqs.slice(0, Math.ceil(faqs.length / 2)).map((faq, index) => (
+                <Card 
+                  key={index}
+                  className="glass-light hover:glass-medium transition-all duration-300 p-0 rounded-xl border-0 overflow-hidden group"
+                >
+                  <Accordion 
+                    type="single" 
+                    collapsible 
+                    value={openItem}
+                    onValueChange={setOpenItem}
+                  >
+                    <AccordionItem value={`item-${index}`} className="border-0">
+                      <AccordionTrigger className="px-6 py-4 text-left hover:no-underline group-hover:text-primary transition-colors">
+                        <div className="flex items-start gap-3 pr-4">
+                          <HelpCircle className="w-5 h-5 text-primary/70 mt-0.5 flex-shrink-0" />
+                          <span className="font-medium">{faq.question}</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-4">
+                        <div className="pl-8 text-muted-foreground leading-relaxed">
+                          {faq.answer}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  
+                  {/* Hover effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                </Card>
+              ))}
+            </div>
+            
+            <div className="space-y-4">
+              {faqs.slice(Math.ceil(faqs.length / 2)).map((faq, index) => (
+                <Card 
+                  key={index + Math.ceil(faqs.length / 2)}
+                  className="glass-light hover:glass-medium transition-all duration-300 p-0 rounded-xl border-0 overflow-hidden group"
+                >
+                  <Accordion 
+                    type="single" 
+                    collapsible
+                    value={openItem}
+                    onValueChange={setOpenItem}
+                  >
+                    <AccordionItem value={`item-${index + Math.ceil(faqs.length / 2)}`} className="border-0">
+                      <AccordionTrigger className="px-6 py-4 text-left hover:no-underline group-hover:text-primary transition-colors">
+                        <div className="flex items-start gap-3 pr-4">
+                          <HelpCircle className="w-5 h-5 text-primary/70 mt-0.5 flex-shrink-0" />
+                          <span className="font-medium">{faq.question}</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-4">
+                        <div className="pl-8 text-muted-foreground leading-relaxed">
+                          {faq.answer}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                  
+                  {/* Hover effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                </Card>
+              ))}
+            </div>
           </div>
+        </div>
+
+        {/* Support Links */}
+        <div className="mt-16">
+          <Card className="glass-light max-w-2xl mx-auto p-8 rounded-xl border-0">
+            <p className="text-center text-lg font-medium mb-6">
+              Still have questions?
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <a 
+                href="#" 
+                className="flex items-center justify-center gap-3 p-4 rounded-lg glass-light hover:glass-medium transition-all duration-300 group"
+              >
+                <MessageCircle className="w-5 h-5 text-primary" />
+                <span className="font-medium group-hover:text-primary transition-colors">Join Discord</span>
+              </a>
+              <a 
+                href="#" 
+                className="flex items-center justify-center gap-3 p-4 rounded-lg glass-light hover:glass-medium transition-all duration-300 group"
+              >
+                <BookOpen className="w-5 h-5 text-primary" />
+                <span className="font-medium group-hover:text-primary transition-colors">Read Docs</span>
+              </a>
+              <a 
+                href="mailto:support@subtle.app" 
+                className="flex items-center justify-center gap-3 p-4 rounded-lg glass-light hover:glass-medium transition-all duration-300 group"
+              >
+                <Mail className="w-5 h-5 text-primary" />
+                <span className="font-medium group-hover:text-primary transition-colors">Email Us</span>
+              </a>
+            </div>
+          </Card>
         </div>
       </div>
     </AnimatedTransition>

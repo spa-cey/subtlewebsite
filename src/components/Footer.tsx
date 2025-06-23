@@ -39,9 +39,7 @@ export const Footer = () => {
           {/* Brand section */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <span className="text-primary font-bold text-xl">S</span>
-              </div>
+              <img src="/Subtle_LOGO-nobackground.png" alt="Subtle" className="w-10 h-10" />
               <span className="font-bold text-xl">Subtle</span>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
