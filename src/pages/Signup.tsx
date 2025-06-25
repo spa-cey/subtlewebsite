@@ -35,14 +35,45 @@ export default function Signup() {
   }
 
   const validateForm = () => {
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address')
       return false
     }
+
+    // Name validation
+    if (formData.fullName.trim().length < 2) {
+      setError('Please enter your full name')
+      return false
+    }
+
+    // Password length
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long')
       return false
     }
+
+    // Password strength checks
+    if (!/[A-Z]/.test(formData.password)) {
+      setError('Password must contain at least one uppercase letter')
+      return false
+    }
+    if (!/[a-z]/.test(formData.password)) {
+      setError('Password must contain at least one lowercase letter')
+      return false
+    }
+    if (!/[0-9]/.test(formData.password)) {
+      setError('Password must contain at least one number')
+      return false
+    }
+
+    // Password match
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      return false
+    }
+
     return true
   }
 
@@ -213,15 +244,40 @@ export default function Signup() {
                     required
                     disabled={isLoading}
                     className="glass-light border-border/50 bg-transparent pr-10"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+                {formData.password && (
+                  <div className="text-xs space-y-1">
+                    <p className="text-muted-foreground">Password must contain:</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      <div className={cn("flex items-center gap-1", formData.password.length >= 6 ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+                        {formData.password.length >= 6 ? <Check size={12} /> : <span className="w-3 h-3">•</span>}
+                        <span>At least 6 characters</span>
+                      </div>
+                      <div className={cn("flex items-center gap-1", /[A-Z]/.test(formData.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+                        {/[A-Z]/.test(formData.password) ? <Check size={12} /> : <span className="w-3 h-3">•</span>}
+                        <span>One uppercase letter</span>
+                      </div>
+                      <div className={cn("flex items-center gap-1", /[a-z]/.test(formData.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+                        {/[a-z]/.test(formData.password) ? <Check size={12} /> : <span className="w-3 h-3">•</span>}
+                        <span>One lowercase letter</span>
+                      </div>
+                      <div className={cn("flex items-center gap-1", /[0-9]/.test(formData.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+                        {/[0-9]/.test(formData.password) ? <Check size={12} /> : <span className="w-3 h-3">•</span>}
+                        <span>One number</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -237,15 +293,20 @@ export default function Signup() {
                     required
                     disabled={isLoading}
                     className="glass-light border-border/50 bg-transparent pr-10"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
                   >
                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+                {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                  <p className="text-xs text-destructive">Passwords do not match</p>
+                )}
               </div>
 
               <Button 

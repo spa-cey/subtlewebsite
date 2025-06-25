@@ -24,8 +24,14 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import AuthCallback from "./pages/AuthCallback";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import DesktopLogin from "./pages/DesktopLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import DiagnosticDashboard from "./pages/DiagnosticDashboard";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -141,13 +147,15 @@ const AppRoutes = () => {
           </PageTransition>
         } 
       />
-      <Route 
-        path="/settings" 
+      <Route
+        path="/settings"
         element={
-          <PageTransition>
-            <Settings />
-          </PageTransition>
-        } 
+          <ProtectedRoute>
+            <PageTransition>
+              <Settings />
+            </PageTransition>
+          </ProtectedRoute>
+        }
       />
       <Route 
         path="/login" 
@@ -170,53 +178,101 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <PageTransition>
-              <Dashboard />
+              <ErrorBoundary>
+                <Dashboard />
+              </ErrorBoundary>
             </PageTransition>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/auth/callback" 
+      <Route
+        path="/auth/callback"
         element={
           <PageTransition>
             <AuthCallback />
           </PageTransition>
-        } 
+        }
       />
-      <Route 
-        path="*" 
+      <Route
+        path="/forgot-password"
+        element={
+          <PageTransition>
+            <ForgotPassword />
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <PageTransition>
+            <ResetPassword />
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/auth/desktop-login"
+        element={
+          <PageTransition>
+            <DesktopLogin />
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/admin/*"
+        element={
+          <ProtectedRoute>
+            <PageTransition>
+              <AdminDashboard />
+            </PageTransition>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/diagnostic"
+        element={
+          <ProtectedRoute>
+            <PageTransition>
+              <DiagnosticDashboard />
+            </PageTransition>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="*"
         element={
           <PageTransition>
             <NotFound />
           </PageTransition>
-        } 
+        }
       />
     </Routes>
   );
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">
-                <AppRoutes />
-              </main>
-              <Footer />
-            </div>
-          </BrowserRouter>
-          <Analytics />
-          <SpeedInsights />
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <div className="min-h-screen flex flex-col">
+                <Navbar />
+                <main className="flex-1">
+                  <AppRoutes />
+                </main>
+                <Footer />
+              </div>
+            </BrowserRouter>
+            <Analytics />
+            <SpeedInsights />
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

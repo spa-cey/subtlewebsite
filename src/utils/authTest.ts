@@ -42,22 +42,22 @@ export const testAuthConnection = async () => {
 
 export const testProfilesTable = async () => {
   try {
-    console.log('Testing profiles table access...')
-    
-    // Test if we can query the profiles table (even if empty)
+    console.log('Testing users table access...')
+
+    // Test if we can query the users table (even if empty)
     const { data, error } = await supabase
-      .from('profiles')
+      .from('users')
       .select('count', { count: 'exact', head: true })
     
     if (error) {
-      console.error('❌ Profiles table access failed:', error.message)
+      console.error('❌ Users table access failed:', error.message)
       return false
     }
     
-    console.log('✅ Profiles table accessible')
+    console.log('✅ Users table accessible')
     return true
   } catch (error) {
-    console.error('❌ Profiles table test failed:', error)
+    console.error('❌ Users table test failed:', error)
     return false
   }
 }

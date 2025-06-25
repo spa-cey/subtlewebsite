@@ -1,14 +1,42 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnimatedTransition } from '@/components/AnimatedTransition';
 import { useAnimateIn } from '@/lib/animations';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { User, Bell, Shield, HelpCircle, CreditCard, Zap } from 'lucide-react';
+import { QuotaStatus, PlanUpgrade } from '@/components/subscription';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const Settings = () => {
   const showContent = useAnimateIn(false, 300);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { subscription, refreshSubscription } = useAuth();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'general');
+
+  useEffect(() => {
+    // Update active tab if URL parameter changes
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const handlePlanSelect = async (planName: string) => {
+    // TODO: Implement plan selection and payment flow
+    toast.info("Plan Selection", {
+      description: `You selected the ${planName} plan. Payment integration coming soon!`,
+    });
+  };
+
+  const handleUpgrade = () => {
+    setActiveTab('subscription');
+    navigate('/settings?tab=subscription');
+  };
   
   return (
     <div className="max-w-7xl mx-auto px-4 pt-24 pb-16">
@@ -21,11 +49,31 @@ const Settings = () => {
         </div>
         
         <div className="max-w-3xl mx-auto">
-          <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-8">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="appearance">Appearance</TabsTrigger>
-              <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-6 mb-8">
+              <TabsTrigger value="general" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">General</span>
+              </TabsTrigger>
+              <TabsTrigger value="subscription" className="flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                <span className="hidden sm:inline">Subscription</span>
+              </TabsTrigger>
+              <TabsTrigger value="appearance" className="flex items-center gap-2">
+                <span className="hidden sm:inline">Appearance</span>
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                <span className="hidden sm:inline">Notifications</span>
+              </TabsTrigger>
+              <TabsTrigger value="privacy" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Privacy</span>
+              </TabsTrigger>
+              <TabsTrigger value="billing" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                <span className="hidden sm:inline">Billing</span>
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="general">
@@ -49,16 +97,6 @@ const Settings = () => {
                   
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="notifications" className="text-base">Notifications</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive notifications about updates and activity
-                      </p>
-                    </div>
-                    <Switch id="notifications" defaultChecked />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
                       <Label htmlFor="ai-suggestions" className="text-base">AI Suggestions</Label>
                       <p className="text-sm text-muted-foreground">
                         Allow AI to provide content suggestions
@@ -68,6 +106,35 @@ const Settings = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="subscription" className="space-y-6">
+              {subscription && (
+                <>
+                  <QuotaStatus
+                    used={subscription.quotaUsed}
+                    limit={subscription.tier.quotaLimit}
+                    resetDate={subscription.quotaResetDate}
+                    planName={subscription.tier.name}
+                    onUpgrade={handleUpgrade}
+                  />
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Upgrade Your Plan</CardTitle>
+                      <CardDescription>
+                        Choose a plan that fits your needs and unlock more AI requests
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <PlanUpgrade 
+                        currentPlan={subscription.tier.name}
+                        onSelectPlan={handlePlanSelect}
+                      />
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </TabsContent>
             
             <TabsContent value="appearance">
@@ -112,44 +179,82 @@ const Settings = () => {
               </Card>
             </TabsContent>
             
-            <TabsContent value="integrations">
+            <TabsContent value="notifications">
               <Card>
                 <CardHeader>
-                  <CardTitle>Integrations</CardTitle>
+                  <CardTitle>Notifications</CardTitle>
                   <CardDescription>
-                    Connect your second brain with external services
+                    Manage your notification preferences
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="google-drive" className="text-base">Google Drive</Label>
+                      <Label htmlFor="email-notifications" className="text-base">Email Notifications</Label>
                       <p className="text-sm text-muted-foreground">
-                        Import and sync files from Google Drive
+                        Receive updates and alerts via email
                       </p>
                     </div>
-                    <Switch id="google-drive" />
+                    <Switch id="email-notifications" defaultChecked />
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="notion" className="text-base">Notion</Label>
+                      <Label htmlFor="usage-alerts" className="text-base">Usage Alerts</Label>
                       <p className="text-sm text-muted-foreground">
-                        Sync with your Notion workspaces
+                        Get notified when approaching quota limits
                       </p>
                     </div>
-                    <Switch id="notion" />
+                    <Switch id="usage-alerts" defaultChecked />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="privacy">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Privacy</CardTitle>
+                  <CardDescription>
+                    Control your privacy settings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="analytics" className="text-base">Analytics</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Help improve Subtle by sharing usage data
+                      </p>
+                    </div>
+                    <Switch id="analytics" />
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label htmlFor="github" className="text-base">GitHub</Label>
+                      <Label htmlFor="data-export" className="text-base">Data Export</Label>
                       <p className="text-sm text-muted-foreground">
-                        Connect to your GitHub repositories
+                        Allow exporting your data
                       </p>
                     </div>
-                    <Switch id="github" />
+                    <Switch id="data-export" defaultChecked />
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="billing">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Billing</CardTitle>
+                  <CardDescription>
+                    Manage your billing information and payment methods
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Billing integration coming soon. Your current plan is: {subscription?.tier.name || 'Free'}
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>
