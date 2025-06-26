@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback,
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase, Database } from '@/lib/supabase'
 import { debugLogger } from '../utils/debug'
+import { fetchProfileDirect, getStoredSession } from '@/lib/supabaseDirectFetch'
 
 type Profile = Database['public']['Tables']['users']['Row']
 
@@ -218,7 +219,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         } else {
           debugLogger.info(COMPONENT_NAME, `Initial session retrieved in ${duration.toFixed(2)}ms`, {
             hasSession: !!initialSession,
-            userId: initialSession?.user.id
+            userId: initialSession?.user.id,
+            email: initialSession?.user.email
           })
         }
 
@@ -229,8 +231,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         if (initialSession?.user) {
           debugLogger.info(COMPONENT_NAME, 'User found, fetching profile and subscription')
+          debugLogger.info(COMPONENT_NAME, 'About to call fetchProfile with ID:', initialSession.user.id)
           await fetchProfile(initialSession.user.id)
+          debugLogger.info(COMPONENT_NAME, 'fetchProfile completed')
           await fetchSubscription(initialSession.user.id)
+          debugLogger.info(COMPONENT_NAME, 'fetchSubscription completed')
         } else {
           debugLogger.info(COMPONENT_NAME, 'No user session found')
         }
@@ -285,11 +290,100 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Add detailed logging
       debugLogger.info(COMPONENT_NAME, `Attempting to fetch profile for user ${userId}`)
       
-      const { data, error } = await supabase
+      // Log the current auth state
+      const { data: { session } } = await supabase.auth.getSession()
+      debugLogger.info(COMPONENT_NAME, 'Current session state', {
+        hasSession: !!session,
+        sessionUserId: session?.user?.id,
+        accessToken: session?.access_token ? 'present' : 'missing'
+      })
+      
+      // First try the regular query
+      debugLogger.info(COMPONENT_NAME, 'Attempting regular query')
+      let { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .maybeSingle() // Use maybeSingle to handle no rows gracefully
+
+      debugLogger.info(COMPONENT_NAME, 'Regular query result', {
+        hasData: !!data,
+        hasError: !!error,
+        error: error ? { message: error.message, code: error.code, details: error.details } : null
+      })
+
+      // If regular query fails, try direct fetch first
+      if (!data) {
+        debugLogger.info(COMPONENT_NAME, 'Regular query failed, trying direct fetch')
+        
+        try {
+          // Store the access token for direct fetch
+          const sessionData = await supabase.auth.getSession()
+          if (sessionData.data.session?.access_token) {
+            const token = sessionData.data.session.access_token
+            // Store in sessionStorage for the direct fetch to use
+            sessionStorage.setItem('supabase.auth.token', token)
+            debugLogger.info(COMPONENT_NAME, 'Stored access token for direct fetch')
+          }
+          
+          const directResult = await fetchProfileDirect(userId)
+          debugLogger.info(COMPONENT_NAME, 'Direct fetch result', {
+            hasData: !!directResult.data,
+            hasError: !!directResult.error,
+            error: directResult.error
+          })
+          
+          if (directResult.data && !directResult.error) {
+            data = directResult.data
+            error = null
+            debugLogger.info(COMPONENT_NAME, 'Direct fetch succeeded')
+          }
+        } catch (directError) {
+          debugLogger.error(COMPONENT_NAME, 'Direct fetch failed', directError)
+        }
+      }
+      
+      // If direct fetch fails and it's the admin user, try the RPC function as a last resort
+      if (!data && userId === '9055d88e-5fce-4dbf-893a-c0348a4c5f14') {
+        debugLogger.info(COMPONENT_NAME, 'Direct fetch failed, trying RPC function')
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_user_profile_direct', { user_id: userId })
+          .single()
+        
+        debugLogger.info(COMPONENT_NAME, 'RPC function result', {
+          hasData: !!rpcData,
+          hasError: !!rpcError,
+          error: rpcError
+        })
+        
+        if (rpcData && !rpcError) {
+          data = rpcData
+          error = null
+          debugLogger.info(COMPONENT_NAME, 'RPC function succeeded')
+        } else {
+          debugLogger.error(COMPONENT_NAME, 'RPC function also failed', rpcError)
+        }
+      }
+      
+      // If still no data, try the get_my_profile function
+      if (!data) {
+        debugLogger.info(COMPONENT_NAME, 'Trying get_my_profile function')
+        const { data: myProfileData, error: myProfileError } = await supabase
+          .rpc('get_my_profile')
+          .single()
+        
+        debugLogger.info(COMPONENT_NAME, 'get_my_profile result', {
+          hasData: !!myProfileData,
+          hasError: !!myProfileError,
+          error: myProfileError
+        })
+        
+        if (myProfileData && !myProfileError) {
+          data = myProfileData
+          error = null
+          debugLogger.info(COMPONENT_NAME, 'get_my_profile function succeeded')
+        }
+      }
 
       const duration = performance.now() - startTime
       
@@ -297,13 +391,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         hasData: !!data,
         hasError: !!error,
         errorMessage: error?.message,
-        errorCode: error?.code
+        errorCode: error?.code,
+        data: data ? { id: data.id, email: data.email, tier: data.subscription_tier } : null
       })
 
       if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows found"
         debugLogger.error(COMPONENT_NAME, `Error fetching profile after ${duration.toFixed(2)}ms`, error)
-        throw error; // Re-throw to handle in parent
-      } else if (!data) {
+        // Don't throw, continue with profile creation
+      }
+      
+      if (!data) {
         debugLogger.warn(COMPONENT_NAME, `Profile not found after ${duration.toFixed(2)}ms, creating new profile`)
         
         // Profile doesn't exist, create it
@@ -320,7 +417,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setProfile(data)
       }
     } catch (error) {
-      debugLogger.error(COMPONENT_NAME, 'Error fetching profile', error)
+      debugLogger.error(COMPONENT_NAME, 'Error in fetchProfile', error)
     }
   }
 

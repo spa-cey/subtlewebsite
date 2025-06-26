@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { debugLogger } from '../utils/debug';
 import { Loader2, AlertCircle, Bug } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ProfileDebugPanel } from '../components/ProfileDebugPanel';
 
 const COMPONENT_NAME = 'Dashboard';
 
@@ -217,27 +218,32 @@ export default function Dashboard() {
 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Profile Setup Required</CardTitle>
-            <CardDescription>
-              Your user profile needs to be set up. This might happen if you signed up before the system was fully configured.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-muted p-3 rounded-md text-sm">
-              <p>User ID: {user?.id || 'Unknown'}</p>
-              <p>Email: {user?.email || 'Unknown'}</p>
-              <p>Profile Status: {profile ? 'Found' : 'Missing'}</p>
-            </div>
-            <Button onClick={() => window.location.reload()}>
-              Retry Loading
-            </Button>
-            <Button onClick={handleSignOut} variant="outline">
-              Sign Out
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-2xl space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Setup Required</CardTitle>
+              <CardDescription>
+                Your user profile needs to be set up. This might happen if you signed up before the system was fully configured.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-muted p-3 rounded-md text-sm">
+                <p>User ID: {user?.id || 'Unknown'}</p>
+                <p>Email: {user?.email || 'Unknown'}</p>
+                <p>Profile Status: {profile ? 'Found' : 'Missing'}</p>
+              </div>
+              <Button onClick={() => window.location.reload()}>
+                Retry Loading
+              </Button>
+              <Button onClick={handleSignOut} variant="outline">
+                Sign Out
+              </Button>
+            </CardContent>
+          </Card>
+          
+          {/* Add the debug panel for easier troubleshooting */}
+          <ProfileDebugPanel />
+        </div>
       </div>
     );
   }

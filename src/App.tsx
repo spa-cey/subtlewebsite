@@ -33,6 +33,15 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
+// Import debug utilities for browser console access
+import './utils/testSupabaseConnection';
+import './utils/testDirectSupabase';
+import './utils/networkDiagnostic';
+import './lib/supabaseDirectFetch';
+import './utils/debugProfileFetch';
+import './utils/enhancedProfileDiagnostic';
+import './utils/testAuthDirectFetch';
+
 const queryClient = new QueryClient();
 
 // Page transition wrapper
