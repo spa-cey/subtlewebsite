@@ -10,9 +10,7 @@ import {
   AlertCircle,
   UserCircle,
   Settings,
-  Search,
   Upload,
-  FolderOpen,
   ShieldCheck
 } from 'lucide-react';
 
@@ -38,22 +36,10 @@ const navigationItems: NavigationItem[] = [
     description: 'Application settings'
   },
   {
-    title: 'Search',
-    href: '/search',
-    icon: Search,
-    description: 'Search functionality'
-  },
-  {
     title: 'Import',
     href: '/import',
     icon: Upload,
     description: 'Data import tools'
-  },
-  {
-    title: 'Manage',
-    href: '/manage',
-    icon: FolderOpen,
-    description: 'Content management'
   },
   {
     title: 'Admin Dashboard',

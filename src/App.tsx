@@ -17,9 +17,7 @@ import DownloadPage from "./pages/DownloadPage";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Import from "./pages/Import";
-import SearchPage from "./pages/SearchPage";
 import Settings from "./pages/Settings";
-import ManagePage from "./pages/ManagePage";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
@@ -116,14 +114,6 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/manage" 
-        element={
-          <PageTransition>
-            <ManagePage />
-          </PageTransition>
-        } 
-      />
-      <Route 
         path="/profile" 
         element={
           <PageTransition>
@@ -136,14 +126,6 @@ const AppRoutes = () => {
         element={
           <PageTransition>
             <Import />
-          </PageTransition>
-        } 
-      />
-      <Route 
-        path="/search" 
-        element={
-          <PageTransition>
-            <SearchPage />
           </PageTransition>
         } 
       />
