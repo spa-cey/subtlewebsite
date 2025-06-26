@@ -1,15 +1,76 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '../contexts/AuthContext';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import {
+  Loader2,
+  AlertCircle,
+  UserCircle,
+  Settings,
+  Search,
+  Upload,
+  FolderOpen,
+  ShieldCheck
+} from 'lucide-react';
+
+interface NavigationItem {
+  title: string;
+  href: string;
+  icon: React.FC<{ className?: string }>;
+  description: string;
+  adminOnly?: boolean;
+}
+
+const navigationItems: NavigationItem[] = [
+  {
+    title: 'Profile',
+    href: '/profile',
+    icon: UserCircle,
+    description: 'User profile management'
+  },
+  {
+    title: 'Settings',
+    href: '/settings',
+    icon: Settings,
+    description: 'Application settings'
+  },
+  {
+    title: 'Search',
+    href: '/search',
+    icon: Search,
+    description: 'Search functionality'
+  },
+  {
+    title: 'Import',
+    href: '/import',
+    icon: Upload,
+    description: 'Data import tools'
+  },
+  {
+    title: 'Manage',
+    href: '/manage',
+    icon: FolderOpen,
+    description: 'Content management'
+  },
+  {
+    title: 'Admin Dashboard',
+    href: '/admin',
+    icon: ShieldCheck,
+    description: 'Admin controls',
+    adminOnly: true
+  }
+];
 
 export default function Dashboard() {
   const { user, profile, loading, signOut } = useAuth();
+  const navigate = useNavigate();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [loadingStartTime] = useState(Date.now());
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
 
   useEffect(() => {
     console.log('[Dashboard] Component mounted', {
@@ -44,12 +105,48 @@ export default function Dashboard() {
     });
   }, [loading, user, profile, loadingTimeout]);
 
+  // Check admin status
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) {
+        setCheckingAdmin(false);
+        return;
+      }
+
+      try {
+        console.log('[Dashboard] Checking admin status for user:', user.id);
+        const { data, error } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          console.error('[Dashboard] Error checking admin status:', error);
+        }
+
+        setIsAdmin(!!data);
+        console.log('[Dashboard] Admin status:', !!data);
+      } catch (err) {
+        console.error('[Dashboard] Failed to check admin status:', err);
+      } finally {
+        setCheckingAdmin(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, [user]);
+
   const handleSignOut = async () => {
     await signOut();
   };
 
+  const handleNavigate = (href: string) => {
+    navigate(href);
+  };
+
   // Initial loading state from AuthContext
-  if (loading) {
+  if (loading || checkingAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -117,11 +214,17 @@ export default function Dashboard() {
     );
   }
 
+  // Filter navigation items based on admin status
+  const visibleNavigationItems = navigationItems.filter(
+    item => !item.adminOnly || (item.adminOnly && isAdmin)
+  );
+
   // Dashboard content
   console.log('[Dashboard] Rendering dashboard content for user:', {
     userId: user.id,
     profileId: profile.id,
-    email: profile.email
+    email: profile.email,
+    isAdmin
   });
 
   return (
@@ -134,54 +237,117 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6">
+          {/* Navigation Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Welcome back!</CardTitle>
-              <CardDescription>
-                {profile.full_name || profile.email}
-              </CardDescription>
+              <CardTitle>Navigation</CardTitle>
+              <CardDescription>Access different areas of the application</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Member since {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'}
-              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {visibleNavigationItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Card
+                      key={item.href}
+                      className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+                      onClick={() => handleNavigate(item.href)}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start space-x-3">
+                          <Icon className="h-5 w-5 mt-0.5 text-primary" />
+                          <div className="space-y-1">
+                            <CardTitle className="text-base">{item.title}</CardTitle>
+                            <CardDescription className="text-sm">
+                              {item.description}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Status</CardTitle>
-              <CardDescription>Your account details</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <dl className="space-y-2 text-sm">
-                <div>
-                  <dt className="font-medium">Email</dt>
-                  <dd className="text-muted-foreground">{profile.email}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium">Subscription</dt>
-                  <dd className="text-muted-foreground">{profile.subscription_tier.charAt(0).toUpperCase() + profile.subscription_tier.slice(1)}</dd>
-                </div>
-              </dl>
-            </CardContent>
-          </Card>
+          {/* Existing cards in a grid */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Welcome back!</CardTitle>
+                <CardDescription>
+                  {profile.full_name || profile.email}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Member since {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'}
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full" size="sm">
-                Edit Profile
-              </Button>
-              <Button variant="outline" className="w-full" size="sm">
-                View Activity
-              </Button>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Status</CardTitle>
+                <CardDescription>Your account details</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <dl className="space-y-2 text-sm">
+                  <div>
+                    <dt className="font-medium">Email</dt>
+                    <dd className="text-muted-foreground">{profile.email}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium">Subscription</dt>
+                    <dd className="text-muted-foreground">{profile.subscription_tier.charAt(0).toUpperCase() + profile.subscription_tier.slice(1)}</dd>
+                  </div>
+                  {isAdmin && (
+                    <div>
+                      <dt className="font-medium">Role</dt>
+                      <dd className="text-muted-foreground">Administrator</dd>
+                    </div>
+                  )}
+                </dl>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>Common tasks</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  size="sm"
+                  onClick={() => handleNavigate('/profile')}
+                >
+                  Edit Profile
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  size="sm"
+                  onClick={() => handleNavigate('/activity')}
+                >
+                  View Activity
+                </Button>
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    size="sm"
+                    onClick={() => handleNavigate('/admin')}
+                  >
+                    Admin Panel
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </>
