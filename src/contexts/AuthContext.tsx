@@ -1,41 +1,27 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react'
-import { User, Session, AuthError } from '@supabase/supabase-js'
+import { User, Session, AuthError, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase, Database } from '@/lib/supabase'
-import { debugLogger } from '../utils/debug'
-import { fetchProfileDirect, getStoredSession } from '@/lib/supabaseDirectFetch'
 
 type Profile = Database['public']['Tables']['users']['Row']
-
-export interface SubscriptionTier {
-  name: string;
-  quotaLimit: number;
-  features: string[];
-}
-
-export interface UserSubscription {
-  tier: SubscriptionTier;
-  quotaUsed: number;
-  quotaResetDate: string;
-}
 
 interface AuthContextType {
   user: User | null
   profile: Profile | null
   session: Session | null
   loading: boolean
-  subscription: UserSubscription | null
+  error: AuthError | null
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: AuthError | null }>
   signInWithMagicLink: (email: string) => Promise<{ error: AuthError | null }>
   signInWithProvider: (provider: 'google' | 'github' | 'apple') => Promise<{ error: AuthError | null }>
   signOut: () => Promise<{ error: AuthError | null }>
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>
-  refreshSubscription: () => Promise<void>
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>
+  refreshSession: () => Promise<{ error: AuthError | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
-const COMPONENT_NAME = 'AuthContext'
-const LOADING_TIMEOUT = 10000 // 10 seconds timeout
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
@@ -54,509 +40,471 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [subscription, setSubscription] = useState<UserSubscription | null>(null)
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const initializingRef = useRef(false)
-  const mountedRef = useRef(true)
+  const [error, setError] = useState<AuthError | null>(null)
+  
+  // Use refs to track initialization and prevent duplicate operations
+  const isInitialized = useRef(false)
+  const profileFetchPromise = useRef<Promise<void> | null>(null)
+  const activeUserId = useRef<string | null>(null)
+  const authStateProcessed = useRef(false)
 
-  debugLogger.info(COMPONENT_NAME, 'AuthProvider initialized')
-
-  // Helper to update loading state with timeout
-  const setLoadingWithTimeout = useCallback((isLoading: boolean, reason: string) => {
-    if (!mountedRef.current) return;
+  // Helper function to handle auth errors
+  const handleAuthError = (error: AuthError) => {
+    setError(error)
+    console.error('Auth error:', error)
     
-    debugLogger.info(COMPONENT_NAME, `Setting loading to ${isLoading}`, { reason })
-    
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current)
-      loadingTimeoutRef.current = null
+    if (error.message?.includes('refresh_token_not_found')) {
+      console.log('Session expired - authentication required')
     }
+  }
 
-    if (isLoading) {
-      const timeout = setTimeout(() => {
-        if (!mountedRef.current) return;
-        
-        debugLogger.error(COMPONENT_NAME, 'Loading timeout exceeded', {
-          user: !!user,
-          profile: !!profile,
-          session: !!session,
-          reason
-        })
-        setLoading(false)
-      }, LOADING_TIMEOUT)
-      loadingTimeoutRef.current = timeout
+  // Memoized fetchProfile with timeout and deduplication
+  const fetchProfile = useCallback(async (userId: string, skipIfLoaded: boolean = false) => {
+    // If we're already fetching for this user, return the existing promise
+    if (activeUserId.current === userId && profileFetchPromise.current) {
+      console.log('[AuthContext] Profile fetch already in progress, waiting...')
+      return profileFetchPromise.current
     }
-
-    setLoading(isLoading)
-  }, [])
-
-  // Fetch user subscription details
-  const fetchSubscription = useCallback(async (userId: string) => {
-    if (!mountedRef.current) return;
     
-    debugLogger.info(COMPONENT_NAME, 'Fetching subscription', { userId })
-    const startTime = performance.now()
-    
-    try {
-      // Get user's tier from profile
-      debugLogger.debug(COMPONENT_NAME, 'Fetching user tier from profile')
-      const { data: profile, error: profileError } = await supabase
-        .from('users')
-        .select('subscription_tier')
-        .eq('id', userId)
-        .single();
-
-      if (profileError) {
-        debugLogger.error(COMPONENT_NAME, 'Error fetching user tier', profileError)
-      }
-
-      const tierName = profile?.subscription_tier || 'free';
-      debugLogger.debug(COMPONENT_NAME, 'User tier determined', { tierName })
-
-      // Get tier quota limits - changed to match the actual table name from migrations
-      debugLogger.debug(COMPONENT_NAME, 'Fetching tier definitions')
-      const { data: quotaData, error: quotaError } = await supabase
-        .from('tier_definitions')
-        .select('*')
-        .eq('tier', tierName)
-        .single();
-
-      if (quotaError) {
-        debugLogger.error(COMPONENT_NAME, 'Error fetching tier definitions', quotaError)
-      }
-
-      // Get current usage - changed to match actual table name
-      const dayAgo = new Date();
-      dayAgo.setDate(dayAgo.getDate() - 1);
-
-      debugLogger.debug(COMPONENT_NAME, 'Fetching usage metrics')
-      const { count: dailyUsage, error: usageError } = await supabase
-        .from('usage_metrics')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .gte('created_at', dayAgo.toISOString());
-
-      if (usageError) {
-        debugLogger.error(COMPONENT_NAME, 'Error fetching usage metrics', usageError)
-      }
-
-      if (quotaData && mountedRef.current) {
-        const features = [];
-        if (tierName === 'free') {
-          features.push('Basic AI models', 'Standard support', '100 requests per month');
-        } else if (tierName === 'pro') {
-          features.push('All AI models', 'Priority support', '2,500 requests per month', 'Advanced features');
-        } else if (tierName === 'team') {
-          features.push('All AI models', 'Dedicated support', '10,000 requests per month', 'Team management', 'Custom integrations');
-        } else if (tierName === 'admin') {
-          features.push('Unlimited everything', 'All AI models', 'Admin access', 'System management', 'No quotas', 'All features enabled');
-        }
-
-        const resetDate = new Date();
-        resetDate.setDate(resetDate.getDate() + 1);
-        resetDate.setHours(0, 0, 0, 0);
-
-        const newSubscription = {
-          tier: {
-            name: tierName.charAt(0).toUpperCase() + tierName.slice(1),
-            quotaLimit: tierName === 'admin' ? -1 : quotaData.daily_request_limit, // -1 means unlimited for admin
-            features,
-          },
-          quotaUsed: dailyUsage || 0,
-          quotaResetDate: resetDate.toISOString(),
-        };
-
-        const duration = performance.now() - startTime
-        debugLogger.info(COMPONENT_NAME, `Subscription fetched successfully in ${duration.toFixed(2)}ms`, newSubscription)
-        setSubscription(newSubscription);
-      }
-    } catch (error) {
-      const duration = performance.now() - startTime
-      debugLogger.error(COMPONENT_NAME, `Error fetching subscription after ${duration.toFixed(2)}ms`, error)
-      
-      if (mountedRef.current) {
-        // Set default free tier if fetch fails
-        const resetDate = new Date();
-        resetDate.setDate(resetDate.getDate() + 1);
-        resetDate.setHours(0, 0, 0, 0);
-
-        setSubscription({
-          tier: {
-            name: 'Free',
-            quotaLimit: 100,
-            features: ['Basic AI models', 'Standard support', '100 requests per month'],
-          },
-          quotaUsed: 0,
-          quotaResetDate: resetDate.toISOString(),
-        });
-      }
-    }
-  }, []);
-
-  // Initialize auth
-  useEffect(() => {
-    // Prevent multiple simultaneous initializations
-    if (initializingRef.current) {
-      debugLogger.info(COMPONENT_NAME, 'Initialization already in progress, skipping')
+    // If we already have the profile for this user and skipIfLoaded is true, skip
+    if (skipIfLoaded && profile && profile.id === userId) {
+      console.log('[AuthContext] Profile already loaded for user')
       return
     }
-
-    initializingRef.current = true
-    debugLogger.info(COMPONENT_NAME, 'Starting auth initialization')
-
-    const initializeAuth = async () => {
+    
+    // Create a new fetch promise
+    activeUserId.current = userId
+    profileFetchPromise.current = (async () => {
+      console.log('[AuthContext] Starting profile fetch for userId:', userId)
+      const startTime = performance.now()
+      
       try {
-        setLoadingWithTimeout(true, 'Getting initial session')
-        const startTime = performance.now()
+        console.log('[AuthContext] Making Supabase query to users table...')
         
-        // Get initial session
-        debugLogger.debug(COMPONENT_NAME, 'Getting initial session')
-        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession()
+        // Create a timeout promise that rejects after 5 seconds
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Profile query timeout after 5 seconds')), 5000)
+        })
         
-        const duration = performance.now() - startTime
-        if (sessionError) {
-          debugLogger.error(COMPONENT_NAME, `Failed to get session after ${duration.toFixed(2)}ms`, sessionError)
-        } else {
-          debugLogger.info(COMPONENT_NAME, `Initial session retrieved in ${duration.toFixed(2)}ms`, {
-            hasSession: !!initialSession,
-            userId: initialSession?.user.id,
-            email: initialSession?.user.email
-          })
+        const queryPromise = supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single()
+        
+        console.log('[AuthContext] Query promise created, awaiting result with timeout...')
+        
+        let data: any = null
+        let error: any = null
+        
+        try {
+          // Race between the query and the timeout
+          const result = await Promise.race([
+            queryPromise,
+            timeoutPromise.then(() => ({ data: null, error: { code: 'TIMEOUT', message: 'Query timed out' } }))
+          ]) as any
+          
+          data = result.data
+          error = result.error
+          
+          const queryTime = performance.now() - startTime
+          console.log(`[AuthContext] Profile query completed in ${queryTime.toFixed(2)}ms`)
+          console.log('[AuthContext] Query result:', { data: !!data, error: !!error, errorCode: error?.code })
+        } catch (timeoutError) {
+          // Handle timeout error from Promise.race
+          console.error('[AuthContext] Query timeout error:', timeoutError)
+          const queryTime = performance.now() - startTime
+          console.log(`[AuthContext] Profile query timed out after ${queryTime.toFixed(2)}ms`)
+          // Don't return here - we need to handle the timeout properly
+          error = { code: 'TIMEOUT', message: 'Profile query timed out' }
         }
 
-        if (!mountedRef.current) return
+        if (error) {
+          console.error('[AuthContext] Profile fetch error:', {
+            code: error.code,
+            message: error.message
+          })
+          
+          // Only attempt to create profile for "not found" errors
+          if (error.code === 'PGRST116') {
+            console.log('[AuthContext] Profile not found, creating...')
+            
+            const { data: userData } = await supabase.auth.getUser()
+            if (userData.user?.id === userId) {
+              const profileData = {
+                id: userId,
+                email: userData.user.email!,
+                full_name: userData.user.user_metadata?.full_name || null,
+                avatar_url: userData.user.user_metadata?.avatar_url || null,
+                subscription_tier: 'free'
+              }
+              
+              console.log('[AuthContext] Inserting new profile...')
+              const { data: newProfile, error: createError } = await supabase
+                .from('users')
+                .insert(profileData)
+                .select()
+                .single()
 
-        setSession(initialSession)
-        setUser(initialSession?.user ?? null)
-        
-        if (initialSession?.user) {
-          debugLogger.info(COMPONENT_NAME, 'User found, fetching profile and subscription')
-          debugLogger.info(COMPONENT_NAME, 'About to call fetchProfile with ID:', initialSession.user.id)
-          await fetchProfile(initialSession.user.id)
-          debugLogger.info(COMPONENT_NAME, 'fetchProfile completed')
-          await fetchSubscription(initialSession.user.id)
-          debugLogger.info(COMPONENT_NAME, 'fetchSubscription completed')
+              if (createError) {
+                console.error('[AuthContext] Profile creation error:', createError)
+              } else if (newProfile) {
+                console.log('[AuthContext] Profile created successfully')
+                setProfile(newProfile)
+              }
+            }
+          }
+        } else if (data) {
+          console.log('[AuthContext] Profile fetched successfully:', {
+            id: data.id,
+            email: data.email,
+            subscription_tier: data.subscription_tier
+          })
+          setProfile(data)
         } else {
-          debugLogger.info(COMPONENT_NAME, 'No user session found')
+          console.log('[AuthContext] No data and no error - unexpected state')
         }
       } catch (error) {
-        debugLogger.error(COMPONENT_NAME, 'Auth initialization error', error)
+        console.error('[AuthContext] Unexpected error in fetchProfile:', error)
+        console.error('[AuthContext] Error stack:', (error as Error).stack)
       } finally {
-        if (mountedRef.current) {
-          setLoadingWithTimeout(false, 'Initialization complete')
-          initializingRef.current = false
+        console.log('[AuthContext] Profile fetch finally block')
+        // Clear the promise ref when done
+        if (activeUserId.current === userId) {
+          profileFetchPromise.current = null
+          activeUserId.current = null
+        }
+      }
+    })()
+    
+    return profileFetchPromise.current
+  }, [profile])
+
+  // Refresh session
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession()
+      if (error) {
+        handleAuthError(error)
+        return { error }
+      }
+      
+      if (data.session) {
+        setSession(data.session)
+        setUser(data.user)
+      }
+      
+      return { error: null }
+    } catch (err) {
+      console.error('Error refreshing session:', err)
+      return { error: err as AuthError }
+    }
+  }, [])
+
+  // Initialize auth on mount
+  useEffect(() => {
+    let mounted = true
+    
+    const initAuth = async () => {
+      if (isInitialized.current) {
+        console.log('[AuthContext] Already initialized, skipping...')
+        return
+      }
+      
+      isInitialized.current = true
+      console.log('[AuthContext] Starting auth initialization...')
+      
+      try {
+        // Check for temporary session
+        const isTemporarySession = sessionStorage.getItem('subtle_session_temporary')
+        console.log('[AuthContext] Temporary session flag:', isTemporarySession)
+        
+        // Get initial session
+        console.log('[AuthContext] Getting session from Supabase...')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        console.log('[AuthContext] Session response received')
+        
+        if (!mounted) {
+          console.log('[AuthContext] Component unmounted, aborting')
+          return
+        }
+        
+        if (error) {
+          console.error('[AuthContext] Session error:', error)
+          handleAuthError(error)
+          setLoading(false)
+        } else if (session) {
+          console.log('[AuthContext] Session found:', { userId: session.user.id, email: session.user.email })
+          
+          // Handle temporary session cleanup
+          if (isTemporarySession && !sessionStorage.getItem('subtle_session_active')) {
+            console.log('[AuthContext] Clearing temporary session')
+            await supabase.auth.signOut()
+            sessionStorage.removeItem('subtle_session_temporary')
+            setLoading(false)
+          } else {
+            console.log('[AuthContext] Valid session found, setting state')
+            setSession(session)
+            setUser(session.user)
+            authStateProcessed.current = true
+            
+            // Fetch profile but ensure loading is set to false regardless
+            try {
+              console.log('[AuthContext] About to fetch profile for user:', session.user.id)
+              await fetchProfile(session.user.id)
+              console.log('[AuthContext] Profile fetch completed')
+            } catch (error) {
+              console.error('[AuthContext] Profile fetch failed:', error)
+            } finally {
+              // ALWAYS set loading to false after profile fetch attempt
+              console.log('[AuthContext] Setting loading to false')
+              setLoading(false)
+              sessionStorage.setItem('subtle_session_active', 'true')
+            }
+          }
+        } else {
+          console.log('[AuthContext] No session found')
+          authStateProcessed.current = true
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('[AuthContext] Critical error during initialization:', error)
+        if (mounted) {
+          console.log('[AuthContext] Setting loading to false due to error')
+          setLoading(false)
         }
       }
     }
 
-    initializeAuth()
+    // Start initialization immediately
+    initAuth()
 
-    // Listen for auth changes
+    // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mountedRef.current) return
+      async (event: AuthChangeEvent, currentSession: Session | null) => {
+        if (!mounted) return
+
+        console.log('Auth event:', event)
         
-        debugLogger.info(COMPONENT_NAME, 'Auth state change', { event, hasSession: !!session })
-        
-        setSession(session)
-        setUser(session?.user ?? null)
-        
-        if (session?.user) {
-          await fetchProfile(session.user.id)
-          await fetchSubscription(session.user.id)
-        } else {
-          debugLogger.info(COMPONENT_NAME, 'Clearing user data')
-          setProfile(null)
-          setSubscription(null)
+        // Skip duplicate processing for initial session
+        if (event === 'INITIAL_SESSION' && authStateProcessed.current) {
+          console.log('[AuthContext] Skipping INITIAL_SESSION - already processed')
+          return
         }
-        setLoadingWithTimeout(false, 'Auth state change processed')
+        
+        // Update session and user if changed
+        setSession(currentSession)
+        setUser(currentSession?.user ?? null)
+        
+        switch (event) {
+          case 'INITIAL_SESSION':
+            // Mark as processed
+            authStateProcessed.current = true
+            break
+            
+          case 'SIGNED_IN':
+            // Skip if we're still initializing
+            if (loading) {
+              console.log('[AuthContext] Skipping SIGNED_IN profile fetch - still initializing')
+              break
+            }
+            // Skip if we already have the profile
+            if (currentSession?.user && currentSession.user.id !== profile?.id) {
+              await fetchProfile(currentSession.user.id, true)
+            }
+            break
+            
+          case 'SIGNED_OUT':
+            setProfile(null)
+            setError(null)
+            authStateProcessed.current = false
+            break
+            
+          case 'USER_UPDATED':
+            if (currentSession?.user) {
+              await fetchProfile(currentSession.user.id)
+            }
+            break
+        }
       }
     )
 
+    // Session refresh interval
+    const refreshInterval = setInterval(async () => {
+      if (!mounted) return
+      
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (currentSession?.expires_at) {
+        const expiresAt = new Date(currentSession.expires_at * 1000)
+        const now = new Date()
+        const timeUntilExpiry = expiresAt.getTime() - now.getTime()
+        
+        if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
+          refreshSession()
+        }
+      }
+    }, 30000)
+
+    // Cleanup
+    const handleBeforeUnload = () => {
+      sessionStorage.removeItem('subtle_session_active')
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
     return () => {
-      mountedRef.current = false
+      mounted = false
+      isInitialized.current = false
+      authStateProcessed.current = false
       subscription.unsubscribe()
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current)
-      }
+      clearInterval(refreshInterval)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
     }
-  }, [])
-
-  const fetchProfile = async (userId: string) => {
-    debugLogger.info(COMPONENT_NAME, 'Fetching user profile', { userId })
-    const startTime = performance.now()
-    
-    try {
-      // Add detailed logging
-      debugLogger.info(COMPONENT_NAME, `Attempting to fetch profile for user ${userId}`)
-      
-      // Log the current auth state
-      const { data: { session } } = await supabase.auth.getSession()
-      debugLogger.info(COMPONENT_NAME, 'Current session state', {
-        hasSession: !!session,
-        sessionUserId: session?.user?.id,
-        accessToken: session?.access_token ? 'present' : 'missing'
-      })
-      
-      // First try the regular query
-      debugLogger.info(COMPONENT_NAME, 'Attempting regular query')
-      let { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle() // Use maybeSingle to handle no rows gracefully
-
-      debugLogger.info(COMPONENT_NAME, 'Regular query result', {
-        hasData: !!data,
-        hasError: !!error,
-        error: error ? { message: error.message, code: error.code, details: error.details } : null
-      })
-
-      // If regular query fails, try direct fetch first
-      if (!data) {
-        debugLogger.info(COMPONENT_NAME, 'Regular query failed, trying direct fetch')
-        
-        try {
-          // Store the access token for direct fetch
-          const sessionData = await supabase.auth.getSession()
-          if (sessionData.data.session?.access_token) {
-            const token = sessionData.data.session.access_token
-            // Store in sessionStorage for the direct fetch to use
-            sessionStorage.setItem('supabase.auth.token', token)
-            debugLogger.info(COMPONENT_NAME, 'Stored access token for direct fetch')
-          }
-          
-          const directResult = await fetchProfileDirect(userId)
-          debugLogger.info(COMPONENT_NAME, 'Direct fetch result', {
-            hasData: !!directResult.data,
-            hasError: !!directResult.error,
-            error: directResult.error
-          })
-          
-          if (directResult.data && !directResult.error) {
-            data = directResult.data
-            error = null
-            debugLogger.info(COMPONENT_NAME, 'Direct fetch succeeded')
-          }
-        } catch (directError) {
-          debugLogger.error(COMPONENT_NAME, 'Direct fetch failed', directError)
-        }
-      }
-      
-      // If direct fetch fails and it's the admin user, try the RPC function as a last resort
-      if (!data && userId === '9055d88e-5fce-4dbf-893a-c0348a4c5f14') {
-        debugLogger.info(COMPONENT_NAME, 'Direct fetch failed, trying RPC function')
-        const { data: rpcData, error: rpcError } = await supabase
-          .rpc('get_user_profile_direct', { user_id: userId })
-          .single()
-        
-        debugLogger.info(COMPONENT_NAME, 'RPC function result', {
-          hasData: !!rpcData,
-          hasError: !!rpcError,
-          error: rpcError
-        })
-        
-        if (rpcData && !rpcError) {
-          data = rpcData
-          error = null
-          debugLogger.info(COMPONENT_NAME, 'RPC function succeeded')
-        } else {
-          debugLogger.error(COMPONENT_NAME, 'RPC function also failed', rpcError)
-        }
-      }
-      
-      // If still no data, try the get_my_profile function
-      if (!data) {
-        debugLogger.info(COMPONENT_NAME, 'Trying get_my_profile function')
-        const { data: myProfileData, error: myProfileError } = await supabase
-          .rpc('get_my_profile')
-          .single()
-        
-        debugLogger.info(COMPONENT_NAME, 'get_my_profile result', {
-          hasData: !!myProfileData,
-          hasError: !!myProfileError,
-          error: myProfileError
-        })
-        
-        if (myProfileData && !myProfileError) {
-          data = myProfileData
-          error = null
-          debugLogger.info(COMPONENT_NAME, 'get_my_profile function succeeded')
-        }
-      }
-
-      const duration = performance.now() - startTime
-      
-      debugLogger.info(COMPONENT_NAME, `Profile query completed in ${duration.toFixed(2)}ms`, {
-        hasData: !!data,
-        hasError: !!error,
-        errorMessage: error?.message,
-        errorCode: error?.code,
-        data: data ? { id: data.id, email: data.email, tier: data.subscription_tier } : null
-      })
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows found"
-        debugLogger.error(COMPONENT_NAME, `Error fetching profile after ${duration.toFixed(2)}ms`, error)
-        // Don't throw, continue with profile creation
-      }
-      
-      if (!data) {
-        debugLogger.warn(COMPONENT_NAME, `Profile not found after ${duration.toFixed(2)}ms, creating new profile`)
-        
-        // Profile doesn't exist, create it
-        const { data: userData } = await supabase.auth.getUser()
-        if (userData.user) {
-          await createProfile(userData.user)
-        }
-      } else {
-        debugLogger.info(COMPONENT_NAME, `Profile fetched successfully in ${duration.toFixed(2)}ms`, {
-          profileId: data.id,
-          email: data.email,
-          tier: data.subscription_tier
-        })
-        setProfile(data)
-      }
-    } catch (error) {
-      debugLogger.error(COMPONENT_NAME, 'Error in fetchProfile', error)
-    }
-  }
-
-  const createProfile = async (user: User) => {
-    debugLogger.info(COMPONENT_NAME, 'Creating user profile', { userId: user.id, email: user.email })
-    const startTime = performance.now()
-    
-    try {
-      const newProfile = {
-        id: user.id,
-        email: user.email!,
-        full_name: user.user_metadata?.full_name || null,
-        avatar_url: user.user_metadata?.avatar_url || null,
-        subscription_tier: 'free'
-      }
-
-      debugLogger.debug(COMPONENT_NAME, 'Inserting new profile', newProfile)
-      const { data, error } = await supabase
-        .from('users')
-        .insert(newProfile)
-        .select()
-        .single()
-
-      const duration = performance.now() - startTime
-
-      if (error) {
-        debugLogger.error(COMPONENT_NAME, `Error creating profile after ${duration.toFixed(2)}ms`, { error, newProfile })
-      } else if (data) {
-        debugLogger.info(COMPONENT_NAME, `Profile created successfully in ${duration.toFixed(2)}ms`, data)
-        setProfile(data)
-      }
-    } catch (error) {
-      debugLogger.error(COMPONENT_NAME, 'Error creating profile', error)
-    }
-  }
+  }, [fetchProfile, refreshSession, loading, profile?.id])
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    debugLogger.info(COMPONENT_NAME, 'Sign up attempt', { email, hasFullName: !!fullName })
-    const startTime = performance.now()
-    
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName
+    try {
+      setError(null)
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
-      }
-    })
-
-    const duration = performance.now() - startTime
-
-    if (error) {
-      debugLogger.error(COMPONENT_NAME, `Sign up failed after ${duration.toFixed(2)}ms`, error)
-    } else {
-      debugLogger.info(COMPONENT_NAME, `Sign up successful in ${duration.toFixed(2)}ms`, { userId: data.user?.id })
+      })
       
-      // Create profile immediately after signup
-      if (data.user) {
-        try {
-          await createProfile(data.user)
-        } catch (profileError) {
-          debugLogger.error(COMPONENT_NAME, 'Failed to create profile after signup', profileError)
-        }
+      if (error) {
+        handleAuthError(error)
       }
+      
+      return { error }
+    } catch (err) {
+      console.error('Sign up error:', err)
+      return { error: err as AuthError }
     }
-    
-    return { error }
   }
 
-  const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
-    debugLogger.info(COMPONENT_NAME, 'Sign in attempt', { email, rememberMe })
-    const startTime = performance.now()
-    
-    // Note: Supabase handles session persistence automatically based on the persistSession option
-    // which is already set to true in our client configuration
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-
-    const duration = performance.now() - startTime
-    
-    if (error) {
-      debugLogger.error(COMPONENT_NAME, `Sign in failed after ${duration.toFixed(2)}ms`, error)
-    } else {
-      debugLogger.info(COMPONENT_NAME, `Sign in successful in ${duration.toFixed(2)}ms`)
+  const signIn = async (email: string, password: string, rememberMe: boolean = true) => {
+    try {
+      setError(null)
       
-      // If remember me is checked, we'll use localStorage to store a preference
-      // Supabase will handle the actual session persistence
-      if (rememberMe) {
-        localStorage.setItem('rememberMe', 'true')
-      } else {
-        localStorage.removeItem('rememberMe')
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      
+      if (error) {
+        handleAuthError(error)
+      } else if (!rememberMe) {
+        sessionStorage.setItem('subtle_session_temporary', 'true')
       }
+      
+      return { error }
+    } catch (err) {
+      console.error('Sign in error:', err)
+      return { error: err as AuthError }
     }
-    
-    return { error }
   }
 
   const signInWithMagicLink = async (email: string) => {
-    debugLogger.info(COMPONENT_NAME, 'Magic link sign in attempt', { email })
-    
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+    try {
+      setError(null)
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      })
+      
+      if (error) {
+        handleAuthError(error)
       }
-    })
-    return { error }
+      
+      return { error }
+    } catch (err) {
+      console.error('Magic link error:', err)
+      return { error: err as AuthError }
+    }
   }
 
   const signInWithProvider = async (provider: 'google' | 'github' | 'apple') => {
-    debugLogger.info(COMPONENT_NAME, 'OAuth sign in attempt', { provider })
-    
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+    try {
+      setError(null)
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      })
+      
+      if (error) {
+        handleAuthError(error)
       }
-    })
-    return { error }
+      
+      return { error }
+    } catch (err) {
+      console.error('OAuth error:', err)
+      return { error: err as AuthError }
+    }
   }
 
   const signOut = async () => {
-    debugLogger.info(COMPONENT_NAME, 'Sign out attempt')
-    const startTime = performance.now()
-    
-    const { error } = await supabase.auth.signOut()
-
-    const duration = performance.now() - startTime
-    
-    if (error) {
-      debugLogger.error(COMPONENT_NAME, `Sign out failed after ${duration.toFixed(2)}ms`, error)
-    } else {
-      debugLogger.info(COMPONENT_NAME, `Sign out successful in ${duration.toFixed(2)}ms`)
+    try {
+      setError(null)
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        handleAuthError(error)
+      } else {
+        sessionStorage.removeItem('subtle_session_temporary')
+        sessionStorage.removeItem('subtle_session_active')
+      }
+      
+      return { error }
+    } catch (err) {
+      console.error('Sign out error:', err)
+      return { error: err as AuthError }
     }
-    
-    return { error }
+  }
+
+  const resetPassword = async (email: string) => {
+    try {
+      setError(null)
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      })
+      
+      if (error) {
+        handleAuthError(error)
+      }
+      
+      return { error }
+    } catch (err) {
+      console.error('Reset password error:', err)
+      return { error: err as AuthError }
+    }
+  }
+
+  const updatePassword = async (newPassword: string) => {
+    try {
+      setError(null)
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+      
+      if (error) {
+        handleAuthError(error)
+      }
+      
+      return { error }
+    } catch (err) {
+      console.error('Update password error:', err)
+      return { error: err as AuthError }
+    }
   }
 
   const updateProfile = async (updates: Partial<Profile>) => {
@@ -564,74 +512,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return { error: new Error('No user logged in') }
     }
 
-    debugLogger.info(COMPONENT_NAME, 'Updating profile', { userId: user.id, updates })
-
     try {
       const { error } = await supabase
         .from('users')
         .update(updates)
         .eq('id', user.id)
 
-      if (error) {
-        debugLogger.error(COMPONENT_NAME, 'Profile update failed', error)
-        return { error }
+      if (!error && profile) {
+        setProfile({ ...profile, ...updates })
       }
 
-      debugLogger.info(COMPONENT_NAME, 'Profile updated successfully')
-      // Update local profile state
-      setProfile(prev => prev ? { ...prev, ...updates } : null)
-      return { error: null }
+      return { error }
     } catch (error) {
-      debugLogger.error(COMPONENT_NAME, 'Profile update error', error)
       return { error: error as Error }
     }
   }
-
-  const refreshSubscription = async () => {
-    debugLogger.info(COMPONENT_NAME, 'Refreshing subscription')
-    
-    if (user) {
-      await fetchSubscription(user.id);
-    } else {
-      debugLogger.warn(COMPONENT_NAME, 'Cannot refresh subscription - no user')
-    }
-  };
-
-  // Log current state periodically in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const interval = setInterval(() => {
-        debugLogger.debug(COMPONENT_NAME, 'Current auth state', {
-          user: user ? { id: user.id, email: user.email } : null,
-          profile: profile ? { id: profile.id, email: profile.email } : null,
-          session: !!session,
-          loading,
-          subscription: subscription ? { tier: subscription.tier.name, quotaUsed: subscription.quotaUsed } : null
-        })
-      }, 5000)
-
-      return () => clearInterval(interval)
-    }
-  }, [user, profile, session, loading, subscription])
 
   const value: AuthContextType = {
     user,
     profile,
     session,
     loading,
-    subscription,
+    error,
     signUp,
     signIn,
     signInWithMagicLink,
     signInWithProvider,
     signOut,
     updateProfile,
-    refreshSubscription
+    resetPassword,
+    updatePassword,
+    refreshSession
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

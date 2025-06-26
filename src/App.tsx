@@ -28,19 +28,10 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import DesktopLogin from "./pages/DesktopLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import DiagnosticDashboard from "./pages/DiagnosticDashboard";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
-// Import debug utilities for browser console access
-import './utils/testSupabaseConnection';
-import './utils/testDirectSupabase';
-import './utils/networkDiagnostic';
-import './lib/supabaseDirectFetch';
-import './utils/debugProfileFetch';
-import './utils/enhancedProfileDiagnostic';
-import './utils/testAuthDirectFetch';
 
 const queryClient = new QueryClient();
 
@@ -232,16 +223,6 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <PageTransition>
               <AdminDashboard />
-            </PageTransition>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/diagnostic"
-        element={
-          <ProtectedRoute>
-            <PageTransition>
-              <DiagnosticDashboard />
             </PageTransition>
           </ProtectedRoute>
         }
