@@ -218,22 +218,83 @@ export const useUserActivity = (userId: string) => {
   });
 };
 
-// User Sessions Hook
+// User Sessions Hook with Mac App Integration
 export const useUserSessions = (userId: string) => {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const sessionsQuery = useQuery({
     queryKey: userKeys.sessions(userId),
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch sessions with related bridge tokens
+      const { data: sessions, error: sessionsError } = await supabase
         .from('user_sessions')
-        .select('*')
+        .select(`
+          *,
+          session_bridge_tokens:session_bridge_tokens(*)
+        `)
         .eq('user_id', userId)
         .order('last_activity', { ascending: false });
 
-      if (error) throw error;
-      return data as UserSession[];
+      if (sessionsError) throw sessionsError;
+
+      // Fetch session sync logs
+      const { data: syncLogs, error: syncError } = await supabase
+        .from('session_sync_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (syncError) console.warn('Error fetching sync logs:', syncError);
+
+      return {
+        sessions: sessions as UserSession[],
+        sessionSyncLogs: syncLogs || [],
+      };
     },
     enabled: !!userId,
   });
+
+  const revokeSession = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase
+        .from('user_sessions')
+        .update({ status: 'revoked', revoked_at: new Date().toISOString() })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.sessions(userId) });
+    },
+  });
+
+  const revokeAllOtherSessions = useMutation({
+    mutationFn: async () => {
+      // Get current session ID (this would be from auth context in real app)
+      const { data: currentUser } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from('user_sessions')
+        .update({ status: 'revoked', revoked_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .neq('id', currentUser?.user?.id); // Don't revoke current session
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.sessions(userId) });
+    },
+  });
+
+  return {
+    sessions: sessionsQuery.data?.sessions || [],
+    sessionSyncLogs: sessionsQuery.data?.sessionSyncLogs || [],
+    isLoading: sessionsQuery.isLoading,
+    error: sessionsQuery.error,
+    revokeSession: revokeSession.mutateAsync,
+    revokeAllOtherSessions: revokeAllOtherSessions.mutateAsync,
+  };
 };
 
 // Admin Notes Hook
@@ -370,3 +431,114 @@ export const useImpersonateUser = () => {
     },
   });
 };
+
+export const useUserUsageAnalytics = (userId: string, timeRange: 'daily' | 'weekly' | 'monthly' = 'weekly') => {
+  return useQuery({
+    queryKey: ['user-usage-analytics', userId, timeRange],
+    queryFn: async () => {
+      if (!userId) return null
+
+      // Get the date range based on timeRange
+      const now = new Date()
+      let startDate = new Date()
+      
+      switch (timeRange) {
+        case 'daily':
+          startDate.setDate(now.getDate() - 30) // Last 30 days
+          break
+        case 'weekly':
+          startDate.setDate(now.getDate() - 90) // Last ~3 months
+          break
+        case 'monthly':
+          startDate.setMonth(now.getMonth() - 12) // Last 12 months
+          break
+      }
+
+      // Fetch usage metrics
+      const { data: usageData, error: usageError } = await supabase
+        .from('user_usage_metrics')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('created_at', startDate.toISOString())
+        .order('created_at', { ascending: true })
+
+      if (usageError) {
+        console.error('Error fetching usage data:', usageError)
+      }
+
+      // Fetch recent activity from user_sessions or activity logs
+      const { data: activityData, error: activityError } = await supabase
+        .from('user_sessions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (activityError) {
+        console.error('Error fetching activity data:', activityError)
+      }
+
+      // Process and aggregate the data
+      const processedData = processUserActivityData(usageData || [], activityData || [])
+      
+      return processedData
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+}
+
+// Helper function to process raw activity data
+const processUserActivityData = (usageData: any[], activityData: any[]) => {
+  // Calculate totals
+  const totalRequests = usageData.reduce((sum, record) => sum + (record.request_count || 0), 0)
+  const totalTokens = usageData.reduce((sum, record) => sum + (record.total_tokens || 0), 0)
+  const totalCost = usageData.reduce((sum, record) => sum + (record.total_cost || 0), 0)
+  
+  // Get last active timestamp
+  const lastActive = activityData.length > 0 ? activityData[0].created_at : null
+
+  // Group usage by day for trends
+  const dailyUsage = usageData.reduce((acc, record) => {
+    const date = new Date(record.created_at).toISOString().split('T')[0]
+    if (!acc[date]) {
+      acc[date] = { date, requests: 0, tokens: 0, cost: 0 }
+    }
+    acc[date].requests += record.request_count || 0
+    acc[date].tokens += record.total_tokens || 0
+    acc[date].cost += record.total_cost || 0
+    return acc
+  }, {} as Record<string, any>)
+
+  // Convert to array and sort
+  const dailyUsageArray = Object.values(dailyUsage).sort((a: any, b: any) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  )
+
+  // Group by feature type if available
+  const usageByFeature = usageData.reduce((acc, record) => {
+    const feature = record.feature_type || 'general'
+    acc[feature] = (acc[feature] || 0) + (record.request_count || 0)
+    return acc
+  }, {} as Record<string, number>)
+
+  // Format recent activity
+  const recentActivity = activityData.slice(0, 20).map(activity => ({
+    action: activity.action || 'API Request',
+    timestamp: activity.created_at,
+    tokens: activity.tokens_used,
+    cost: activity.cost,
+    feature: activity.feature_type
+  }))
+
+  return {
+    totalRequests,
+    totalTokens,
+    totalCost,
+    lastActive,
+    dailyUsage: dailyUsageArray,
+    recentActivity,
+    usageByFeature
+  }
+}

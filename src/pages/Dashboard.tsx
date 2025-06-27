@@ -9,7 +9,6 @@ import {
   Loader2,
   AlertCircle,
   UserCircle,
-  Settings,
   Upload,
   ShieldCheck
 } from 'lucide-react';
@@ -28,12 +27,6 @@ const navigationItems: NavigationItem[] = [
     href: '/profile',
     icon: UserCircle,
     description: 'User profile management'
-  },
-  {
-    title: 'Settings',
-    href: '/settings',
-    icon: Settings,
-    description: 'Application settings'
   },
   {
     title: 'Import',

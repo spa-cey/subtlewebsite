@@ -8,18 +8,40 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
+      console.log('[AuthCallback] Starting auth callback handling')
+      console.log('[AuthCallback] Current URL:', window.location.href)
+      console.log('[AuthCallback] Hash fragment:', window.location.hash)
+      
       try {
+        // First, check if we have tokens in the URL hash
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+        
+        console.log('[AuthCallback] URL tokens found:', {
+          hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken
+        })
+        
         const { data, error } = await supabase.auth.getSession()
         
         if (error) {
-          console.error('Auth callback error:', error)
+          console.error('[AuthCallback] Session error:', error)
           navigate('/login?error=auth_callback_failed')
           return
         }
 
+        console.log('[AuthCallback] Session status:', {
+          hasSession: !!data.session,
+          userId: data.session?.user?.id,
+          email: data.session?.user?.email
+        })
+
         if (data.session) {
+          console.log('[AuthCallback] Valid session found, redirecting to dashboard')
           navigate('/dashboard')
         } else {
+          console.log('[AuthCallback] No session found, redirecting to login')
           navigate('/login')
         }
       } catch (error) {

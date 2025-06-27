@@ -95,7 +95,7 @@ export function useAzureOpenAI(options: UseAzureOpenAIOptions = {}) {
             label: "Upgrade",
             onClick: () => {
               // Navigate to upgrade page
-              window.location.href = error.upgradeUrl || '/settings?tab=subscription';
+              window.location.href = error.upgradeUrl || '/profile?tab=subscription';
             }
           }
         });

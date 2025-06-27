@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProfileInformation } from '@/components/profile/ProfileInformation';
 import { SubscriptionManagement } from '@/components/profile/SubscriptionManagement';
 import AccountSettings from '@/components/profile/AccountSettings';
+import UsageAnalytics from '@/components/profile/UsageAnalytics';
+import { SecuritySettings } from '@/components/profile/SecuritySettings';
 import {
   User,
   CreditCard,
@@ -23,7 +25,7 @@ const ProfilePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8 px-4">
+      <div className="container mx-auto py-8 px-4 pt-24">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center space-x-4 mb-8">
             <Skeleton className="h-16 w-16 rounded-full" />
@@ -41,7 +43,7 @@ const ProfilePage: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="container mx-auto py-8 px-4">
+      <div className="container mx-auto py-8 px-4 pt-24">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             Authentication Required
@@ -67,7 +69,7 @@ const ProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-8 px-4 pt-24">
       <div className="max-w-4xl mx-auto">
         {/* Profile Header */}
         <div className="flex items-center space-x-6 mb-8">
@@ -137,47 +139,11 @@ const ProfilePage: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Usage Analytics</CardTitle>
-                <CardDescription>
-                  View your usage statistics and activity insights
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <BarChart3 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    Analytics Dashboard
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Usage analytics and insights will be implemented in Phase 4.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <UsageAnalytics />
           </TabsContent>
 
           <TabsContent value="security" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security Settings</CardTitle>
-                <CardDescription>
-                  Manage your account security and authentication
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Shield className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    Security Center
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Security settings and two-factor authentication will be implemented in Phase 5.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <SecuritySettings userId={user.id} />
           </TabsContent>
         </Tabs>
       </div>

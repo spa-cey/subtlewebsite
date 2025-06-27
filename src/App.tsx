@@ -17,7 +17,6 @@ import DownloadPage from "./pages/DownloadPage";
 import NotFound from "./pages/NotFound";
 import ProfilePage from "./pages/ProfilePage";
 import Import from "./pages/Import";
-import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
@@ -130,16 +129,6 @@ const AppRoutes = () => {
             <Import />
           </PageTransition>
         } 
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <PageTransition>
-              <Settings />
-            </PageTransition>
-          </ProtectedRoute>
-        }
       />
       <Route 
         path="/login" 
