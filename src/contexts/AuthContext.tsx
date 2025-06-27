@@ -14,7 +14,7 @@ interface AuthContextType {
   isFromMacAppBridge: boolean
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: AuthError | null }>
-  signInWithMagicLink: (email: string) => Promise<{ error: AuthError | null }>
+  signInWithMagicLink: (email: string, options?: { returnUrl?: string; desktopAuth?: boolean }) => Promise<{ error: AuthError | null }>
   signInWithProvider: (provider: 'google' | 'github' | 'apple') => Promise<{ error: AuthError | null }>
   signOut: () => Promise<{ error: AuthError | null }>
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>
@@ -491,13 +491,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }
 
-  const signInWithMagicLink = async (email: string) => {
+  const signInWithMagicLink = async (email: string, options?: { returnUrl?: string; desktopAuth?: boolean }) => {
     try {
       setError(null)
+      
+      let redirectUrl = `${window.location.origin}/auth/callback`;
+      
+      if (options?.desktopAuth && options?.returnUrl) {
+        // For desktop auth, preserve the original desktop-login URL with all parameters
+        redirectUrl = `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(options.returnUrl)}&desktopAuth=true`;
+      } else if (options?.returnUrl) {
+        // Regular web auth with return URL
+        redirectUrl = `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(options.returnUrl)}`;
+      }
+      
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: redirectUrl
         }
       })
       

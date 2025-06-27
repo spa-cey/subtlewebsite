@@ -91,7 +91,10 @@ export default function Login() {
 
     setIsLoading(true)
 
-    const { error } = await signInWithMagicLink(email)
+    const { error } = await signInWithMagicLink(email, {
+      returnUrl: returnUrl || undefined,
+      desktopAuth: isDesktopAuth
+    })
     
     if (error) {
       setError(error.message)
