@@ -10,34 +10,48 @@ export default function DesktopLogin() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   const state = searchParams.get("state");
   const redirectUri = searchParams.get("redirect_uri");
+  const email = searchParams.get("email");
 
   useEffect(() => {
+    console.log('[DesktopLogin] Parameters:', { state, redirectUri, email, hasUser: !!user, hasSession: !!session });
+    
     // Validate parameters
     if (!state || !redirectUri) {
+      console.error('[DesktopLogin] Missing required parameters');
+      setErrorMessage("Invalid authentication request - missing parameters");
       toast.error("Invalid authentication request");
-      navigate("/login");
+      setTimeout(() => navigate("/login"), 3000);
       return;
     }
 
     // Validate redirect URI is for Subtle desktop app
     if (!redirectUri.startsWith("subtle://")) {
+      console.error('[DesktopLogin] Invalid redirect URI:', redirectUri);
+      setErrorMessage("Invalid redirect URI - must be subtle:// scheme");
       toast.error("Invalid redirect URI");
-      navigate("/login");
+      setTimeout(() => navigate("/login"), 3000);
       return;
     }
 
     // If user is already logged in, redirect immediately
     if (user && session) {
+      console.log('[DesktopLogin] User authenticated, redirecting to desktop app');
       handleRedirect();
     }
-  }, [user, session, state, redirectUri, navigate]);
+  }, [user, session, state, redirectUri, email, navigate]);
 
   const handleRedirect = async () => {
     if (!session?.access_token || !state || !redirectUri) {
-      console.error("Missing required data for redirect");
+      console.error("[DesktopLogin] Missing required data for redirect:", {
+        hasAccessToken: !!session?.access_token,
+        hasState: !!state,
+        hasRedirectUri: !!redirectUri
+      });
+      setErrorMessage("Missing authentication data");
       return;
     }
 
@@ -49,10 +63,15 @@ export default function DesktopLogin() {
       callbackUrl.searchParams.set("token", session.access_token);
       callbackUrl.searchParams.set("state", state);
 
-      // Redirect to the desktop app
-      window.location.href = callbackUrl.toString();
+      console.log('[DesktopLogin] Redirecting to:', callbackUrl.toString());
+
+      // Small delay to ensure UI updates
+      setTimeout(() => {
+        window.location.href = callbackUrl.toString();
+      }, 500);
     } catch (error) {
       console.error("Error redirecting to desktop app:", error);
+      setErrorMessage("Failed to redirect to desktop app");
       toast.error("Failed to redirect to desktop app");
       setIsRedirecting(false);
     }
@@ -60,25 +79,50 @@ export default function DesktopLogin() {
 
   // If not logged in, redirect to login page with return URL
   useEffect(() => {
-    if (!user && !session) {
+    if (!user && !session && !errorMessage) {
+      console.log('[DesktopLogin] No user session, redirecting to login');
       const returnUrl = encodeURIComponent(window.location.href);
-      navigate(`/login?returnUrl=${returnUrl}&desktopAuth=true`);
+      let loginUrl = `/login?returnUrl=${returnUrl}&desktopAuth=true`;
+      if (email) {
+        loginUrl += `&email=${encodeURIComponent(email)}`;
+      }
+      navigate(loginUrl);
     }
-  }, [user, session, navigate]);
+  }, [user, session, navigate, email, errorMessage]);
+
+  const getStatusMessage = () => {
+    if (errorMessage) {
+      return errorMessage;
+    }
+    if (isRedirecting) {
+      return "Redirecting you back to the desktop app...";
+    }
+    if (user && session) {
+      return "Authentication successful, preparing redirect...";
+    }
+    return "Authenticating your account...";
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle>Logging in for Subtle Desktop</CardTitle>
+          <CardTitle>Subtle Desktop Authentication</CardTitle>
           <CardDescription>
-            {isRedirecting 
-              ? "Redirecting you back to the desktop app..."
-              : "Authenticating your account..."}
+            {getStatusMessage()}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          {errorMessage ? (
+            <div className="text-center">
+              <div className="text-red-500 mb-2">❌</div>
+              <p className="text-sm text-muted-foreground">
+                Redirecting to login page...
+              </p>
+            </div>
+          ) : (
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          )}
         </CardContent>
       </Card>
     </div>

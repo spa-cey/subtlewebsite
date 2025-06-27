@@ -15,7 +15,7 @@ import HowPage from "./pages/HowPage";
 import FeaturesPage from "./pages/FeaturesPage";
 import DownloadPage from "./pages/DownloadPage";
 import NotFound from "./pages/NotFound";
-import Profile from "./pages/Profile";
+import ProfilePage from "./pages/ProfilePage";
 import Import from "./pages/Import";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
@@ -113,13 +113,15 @@ const AppRoutes = () => {
           </PageTransition>
         } 
       />
-      <Route 
-        path="/profile" 
+      <Route
+        path="/profile"
         element={
-          <PageTransition>
-            <Profile />
-          </PageTransition>
-        } 
+          <ProtectedRoute>
+            <PageTransition>
+              <ProfilePage />
+            </PageTransition>
+          </ProtectedRoute>
+        }
       />
       <Route 
         path="/import" 
@@ -192,7 +194,7 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/auth/desktop-login"
+        path="/desktop-login"
         element={
           <PageTransition>
             <DesktopLogin />
@@ -229,6 +231,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <Toaster />
             <BrowserRouter>
               <div className="min-h-screen flex flex-col">
                 <Navbar />

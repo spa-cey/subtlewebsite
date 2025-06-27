@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react'
 import { User, Session, AuthError, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase, Database } from '@/lib/supabase'
+import { SessionSyncService, getBridgeTokenFromURL, removeBridgeTokenFromURL, isBridgeTokenSyncEnabled } from '@/lib/SessionSyncService'
 
 type Profile = Database['public']['Tables']['users']['Row']
 
@@ -10,6 +11,7 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   error: AuthError | null
+  isFromMacAppBridge: boolean
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: AuthError | null }>
   signInWithMagicLink: (email: string) => Promise<{ error: AuthError | null }>
@@ -19,6 +21,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>
   updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>
   refreshSession: () => Promise<{ error: AuthError | null }>
+  broadcastSettingsChange: (settings: Record<string, any>) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -41,12 +44,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<AuthError | null>(null)
+  const [isFromMacAppBridge, setIsFromMacAppBridge] = useState(false)
   
   // Use refs to track initialization and prevent duplicate operations
   const isInitialized = useRef(false)
   const profileFetchPromise = useRef<Promise<void> | null>(null)
   const activeUserId = useRef<string | null>(null)
   const authStateProcessed = useRef(false)
+  const sessionSyncService = useRef<SessionSyncService | null>(null)
 
   // Helper function to handle auth errors
   const handleAuthError = (error: AuthError) => {
@@ -201,6 +206,59 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, [])
 
+  // Bridge token authentication handler
+  const handleBridgeTokenAuth = useCallback(async () => {
+    if (!isBridgeTokenSyncEnabled()) {
+      console.log('[AuthContext] Bridge token sync is disabled')
+      return false
+    }
+
+    const bridgeToken = getBridgeTokenFromURL()
+    
+    if (!bridgeToken) {
+      return false
+    }
+
+    console.log('[AuthContext] Bridge token detected, initiating exchange')
+    removeBridgeTokenFromURL()
+    
+    try {
+      setLoading(true)
+      setError(null)
+      
+      if (!sessionSyncService.current) {
+        sessionSyncService.current = SessionSyncService.getInstance()
+      }
+      
+      const bridgeSession = await sessionSyncService.current.exchangeBridgeToken(bridgeToken)
+      
+      console.log('[AuthContext] Bridge token exchange successful')
+      setSession(bridgeSession)
+      setUser(bridgeSession.user)
+      setIsFromMacAppBridge(true)
+      authStateProcessed.current = true
+      
+      // Initialize realtime sync
+      await sessionSyncService.current.initializeRealtimeSync(bridgeSession.user.id)
+      
+      // Fetch profile for the authenticated user
+      try {
+        await fetchProfile(bridgeSession.user.id)
+      } catch (profileError) {
+        console.error('[AuthContext] Profile fetch failed after bridge auth:', profileError)
+      }
+      
+      return true
+      
+    } catch (bridgeError) {
+      console.error('[AuthContext] Bridge token exchange failed:', bridgeError)
+      setError(bridgeError as AuthError)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }, [fetchProfile])
+
   // Initialize auth on mount
   useEffect(() => {
     let mounted = true
@@ -215,6 +273,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log('[AuthContext] Starting auth initialization...')
       
       try {
+        // Check for bridge token first
+        const bridgeHandled = await handleBridgeTokenAuth()
+        
+        if (bridgeHandled) {
+          console.log('[AuthContext] Bridge token handled, skipping normal auth flow')
+          return
+        }
         // Check for temporary session
         const isTemporarySession = sessionStorage.getItem('subtle_session_temporary')
         console.log('[AuthContext] Temporary session flag:', isTemporarySession)
@@ -266,6 +331,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         } else {
           console.log('[AuthContext] No session found')
           authStateProcessed.current = true
+          setIsFromMacAppBridge(false)
           setLoading(false)
         }
       } catch (error) {
@@ -297,6 +363,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession(currentSession)
         setUser(currentSession?.user ?? null)
         
+        // Update Mac app bridge status
+        const isBridge = sessionStorage.getItem('subtle_session_source') === 'mac_app_bridge'
+        setIsFromMacAppBridge(isBridge)
+        
         switch (event) {
           case 'INITIAL_SESSION':
             // Mark as processed
@@ -318,7 +388,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           case 'SIGNED_OUT':
             setProfile(null)
             setError(null)
+            setIsFromMacAppBridge(false)
             authStateProcessed.current = false
+            
+            // Cleanup session sync service
+            if (sessionSyncService.current) {
+              await sessionSyncService.current.cleanup()
+            }
             break
             
           case 'USER_UPDATED':
@@ -360,8 +436,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       subscription.unsubscribe()
       clearInterval(refreshInterval)
       window.removeEventListener('beforeunload', handleBeforeUnload)
+      
+      // Cleanup session sync service
+      if (sessionSyncService.current) {
+        sessionSyncService.current.cleanup()
+      }
     }
-  }, [fetchProfile, refreshSession, loading, profile?.id])
+  }, [fetchProfile, refreshSession, loading, profile?.id, handleBridgeTokenAuth])
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
@@ -455,6 +536,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signOut = async () => {
     try {
       setError(null)
+      
+      // Cleanup session sync service
+      if (sessionSyncService.current) {
+        await sessionSyncService.current.cleanup()
+      }
+      
       const { error } = await supabase.auth.signOut()
       
       if (error) {
@@ -462,6 +549,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } else {
         sessionStorage.removeItem('subtle_session_temporary')
         sessionStorage.removeItem('subtle_session_active')
+        sessionStorage.removeItem('subtle_session_source')
+        sessionStorage.removeItem('subtle_bridge_token_used')
+        setIsFromMacAppBridge(false)
       }
       
       return { error }
@@ -528,12 +618,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }
 
+  // Broadcast settings change to Mac app
+  const broadcastSettingsChange = async (settings: Record<string, any>) => {
+    if (sessionSyncService.current && isFromMacAppBridge) {
+      try {
+        await sessionSyncService.current.broadcastSettingsChange(settings)
+        console.log('[AuthContext] Settings change broadcasted to Mac app')
+      } catch (error) {
+        console.error('[AuthContext] Failed to broadcast settings change:', error)
+      }
+    }
+  }
+
   const value: AuthContextType = {
     user,
     profile,
     session,
     loading,
     error,
+    isFromMacAppBridge,
     signUp,
     signIn,
     signInWithMagicLink,
@@ -542,7 +645,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     updateProfile,
     resetPassword,
     updatePassword,
-    refreshSession
+    refreshSession,
+    broadcastSettingsChange
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
