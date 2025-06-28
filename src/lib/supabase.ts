@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://kivgnlegwnftefuipald.supabase.co'
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://kivgnlegwnftefuipald.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtpdmdubGVnd25mdGVmdWlwYWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0NTYwNzQsImV4cCI6MjA2NjAzMjA3NH0.wv_wFmseu4YrXzjImcyDIuvX3t6zLl7ZvfDAHRmRJ5E'
 
 // Get the current app URL for redirect configuration

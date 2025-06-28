@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react'
 import { User, Session, AuthError, AuthChangeEvent } from '@supabase/supabase-js'
-import { supabase, Database } from '@/lib/supabase'
+import { supabase, supabaseUrl, Database } from '@/lib/supabase'
 import { SessionSyncService, getBridgeTokenFromURL, removeBridgeTokenFromURL, isBridgeTokenSyncEnabled } from '@/lib/SessionSyncService'
 
 type Profile = Database['public']['Tables']['users']['Row']
@@ -46,404 +46,298 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [error, setError] = useState<AuthError | null>(null)
   const [isFromMacAppBridge, setIsFromMacAppBridge] = useState(false)
   
-  // Use refs to track initialization and prevent duplicate operations
-  const isInitialized = useRef(false)
-  const profileFetchPromise = useRef<Promise<void> | null>(null)
-  const activeUserId = useRef<string | null>(null)
-  const authStateProcessed = useRef(false)
+  // Track initialization to prevent duplicate operations
+  const initializationRef = useRef<Promise<void> | null>(null)
+  const profileFetchCache = useRef<Map<string, Promise<Profile | null>>>(new Map())
   const sessionSyncService = useRef<SessionSyncService | null>(null)
+  const authSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
 
   // Helper function to handle auth errors
   const handleAuthError = (error: AuthError) => {
     setError(error)
     console.error('Auth error:', error)
-    
-    if (error.message?.includes('refresh_token_not_found')) {
-      console.log('Session expired - authentication required')
-    }
   }
 
-  // Memoized fetchProfile with timeout and deduplication
-  const fetchProfile = useCallback(async (userId: string, skipIfLoaded: boolean = false) => {
-    // If we're already fetching for this user, return the existing promise
-    if (activeUserId.current === userId && profileFetchPromise.current) {
-      console.log('[AuthContext] Profile fetch already in progress, waiting...')
-      return profileFetchPromise.current
+  // Simplified fetchProfile with proper caching
+  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+    // Check cache first
+    const cached = profileFetchCache.current.get(userId)
+    if (cached) {
+      console.log('[AuthContext] Using cached profile fetch for user:', userId)
+      return cached
     }
-    
-    // If we already have the profile for this user and skipIfLoaded is true, skip
-    if (skipIfLoaded && profile && profile.id === userId) {
-      console.log('[AuthContext] Profile already loaded for user')
-      return
-    }
-    
-    // Create a new fetch promise
-    activeUserId.current = userId
-    profileFetchPromise.current = (async () => {
-      console.log('[AuthContext] Starting profile fetch for userId:', userId)
-      const startTime = performance.now()
+
+    // Create new fetch promise
+    const fetchPromise = (async () => {
+      console.log('[AuthContext] Fetching profile for user:', userId)
       
       try {
-        console.log('[AuthContext] Making Supabase query to users table...')
-        
-        // Create a timeout promise that rejects after 5 seconds
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Profile query timeout after 5 seconds')), 5000)
-        })
-        
-        const queryPromise = supabase
+        const { data, error } = await supabase
           .from('users')
           .select('*')
           .eq('id', userId)
           .single()
-        
-        console.log('[AuthContext] Query promise created, awaiting result with timeout...')
-        
-        let data: any = null
-        let error: any = null
-        
-        try {
-          // Race between the query and the timeout
-          const result = await Promise.race([
-            queryPromise,
-            timeoutPromise.then(() => ({ data: null, error: { code: 'TIMEOUT', message: 'Query timed out' } }))
-          ]) as any
-          
-          data = result.data
-          error = result.error
-          
-          const queryTime = performance.now() - startTime
-          console.log(`[AuthContext] Profile query completed in ${queryTime.toFixed(2)}ms`)
-          console.log('[AuthContext] Query result:', { data: !!data, error: !!error, errorCode: error?.code })
-        } catch (timeoutError) {
-          // Handle timeout error from Promise.race
-          console.error('[AuthContext] Query timeout error:', timeoutError)
-          const queryTime = performance.now() - startTime
-          console.log(`[AuthContext] Profile query timed out after ${queryTime.toFixed(2)}ms`)
-          // Don't return here - we need to handle the timeout properly
-          error = { code: 'TIMEOUT', message: 'Profile query timed out' }
-        }
 
         if (error) {
-          console.error('[AuthContext] Profile fetch error:', {
-            code: error.code,
-            message: error.message
-          })
-          
-          // Only attempt to create profile for "not found" errors
           if (error.code === 'PGRST116') {
-            console.log('[AuthContext] Profile not found, creating...')
+            // Profile doesn't exist, create it
+            console.log('[AuthContext] Profile not found, creating new profile')
             
             const { data: userData } = await supabase.auth.getUser()
             if (userData.user?.id === userId) {
-              const profileData = {
+              const newProfileData = {
                 id: userId,
                 email: userData.user.email!,
                 full_name: userData.user.user_metadata?.full_name || null,
                 avatar_url: userData.user.user_metadata?.avatar_url || null,
-                subscription_tier: 'free'
+                subscription_tier: 'free' as const
               }
               
-              console.log('[AuthContext] Inserting new profile...')
               const { data: newProfile, error: createError } = await supabase
                 .from('users')
-                .insert(profileData)
+                .insert(newProfileData)
                 .select()
                 .single()
 
               if (createError) {
-                console.error('[AuthContext] Profile creation error:', createError)
-              } else if (newProfile) {
-                console.log('[AuthContext] Profile created successfully')
-                setProfile(newProfile)
+                console.error('[AuthContext] Failed to create profile:', createError)
+                return null
               }
+              
+              return newProfile
             }
           }
-        } else if (data) {
-          console.log('[AuthContext] Profile fetched successfully:', {
-            id: data.id,
-            email: data.email,
-            subscription_tier: data.subscription_tier
-          })
-          setProfile(data)
-        } else {
-          console.log('[AuthContext] No data and no error - unexpected state')
+          console.error('[AuthContext] Profile fetch error:', error)
+          return null
         }
-      } catch (error) {
-        console.error('[AuthContext] Unexpected error in fetchProfile:', error)
-        console.error('[AuthContext] Error stack:', (error as Error).stack)
+
+        return data
+      } catch (err) {
+        console.error('[AuthContext] Unexpected error fetching profile:', err)
+        return null
       } finally {
-        console.log('[AuthContext] Profile fetch finally block')
-        // Clear the promise ref when done
-        if (activeUserId.current === userId) {
-          profileFetchPromise.current = null
-          activeUserId.current = null
-        }
+        // Clean up cache after a delay
+        setTimeout(() => {
+          profileFetchCache.current.delete(userId)
+        }, 5000)
       }
     })()
-    
-    return profileFetchPromise.current
-  }, [profile])
 
-  // Refresh session
-  const refreshSession = useCallback(async () => {
-    try {
-      const { data, error } = await supabase.auth.refreshSession()
-      if (error) {
-        handleAuthError(error)
-        return { error }
-      }
-      
-      if (data.session) {
-        setSession(data.session)
-        setUser(data.user)
-      }
-      
-      return { error: null }
-    } catch (err) {
-      console.error('Error refreshing session:', err)
-      return { error: err as AuthError }
-    }
+    // Cache the promise
+    profileFetchCache.current.set(userId, fetchPromise)
+    return fetchPromise
   }, [])
 
-  // Bridge token authentication handler
-  const handleBridgeTokenAuth = useCallback(async () => {
+  // Handle bridge token authentication
+  const handleBridgeTokenAuth = useCallback(async (): Promise<Session | null> => {
     if (!isBridgeTokenSyncEnabled()) {
-      console.log('[AuthContext] Bridge token sync is disabled')
-      return false
+      return null
     }
 
     const bridgeToken = getBridgeTokenFromURL()
-    
     if (!bridgeToken) {
-      return false
+      return null
     }
 
-    console.log('[AuthContext] Bridge token detected, initiating exchange')
+    console.log('[AuthContext] Processing bridge token authentication')
     removeBridgeTokenFromURL()
     
     try {
-      setLoading(true)
-      setError(null)
-      
       if (!sessionSyncService.current) {
         sessionSyncService.current = SessionSyncService.getInstance()
       }
       
       const bridgeSession = await sessionSyncService.current.exchangeBridgeToken(bridgeToken)
       
-      console.log('[AuthContext] Bridge token exchange successful')
       setSession(bridgeSession)
       setUser(bridgeSession.user)
       setIsFromMacAppBridge(true)
-      authStateProcessed.current = true
       
       // Initialize realtime sync
       await sessionSyncService.current.initializeRealtimeSync(bridgeSession.user.id)
       
-      // Fetch profile for the authenticated user
-      try {
-        await fetchProfile(bridgeSession.user.id)
-      } catch (profileError) {
-        console.error('[AuthContext] Profile fetch failed after bridge auth:', profileError)
+      // Fetch profile
+      const userProfile = await fetchProfile(bridgeSession.user.id)
+      if (userProfile) {
+        setProfile(userProfile)
       }
       
-      return true
-      
-    } catch (bridgeError) {
-      console.error('[AuthContext] Bridge token exchange failed:', bridgeError)
-      setError(bridgeError as AuthError)
-      return false
-    } finally {
-      setLoading(false)
+      return bridgeSession
+    } catch (error) {
+      console.error('[AuthContext] Bridge token exchange failed:', error)
+      handleAuthError(error as AuthError)
+      return null
     }
   }, [fetchProfile])
 
-  // Initialize auth on mount
-  useEffect(() => {
-    let mounted = true
+  // Main initialization function
+  const initializeAuth = useCallback(async () => {
+    console.log('[AuthContext] Starting auth initialization')
     
-    const initAuth = async () => {
-      if (isInitialized.current) {
-        console.log('[AuthContext] Already initialized, skipping...')
+    try {
+      // Check for bridge token first
+      const bridgeSession = await handleBridgeTokenAuth()
+      if (bridgeSession) {
+        console.log('[AuthContext] Authenticated via bridge token')
         return
       }
+
+      // Get current session
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession()
       
-      isInitialized.current = true
-      console.log('[AuthContext] Starting auth initialization...')
-      
-      try {
-        // Check for bridge token first
-        const bridgeHandled = await handleBridgeTokenAuth()
-        
-        if (bridgeHandled) {
-          console.log('[AuthContext] Bridge token handled, skipping normal auth flow')
-          return
-        }
-        // Check for temporary session
-        const isTemporarySession = sessionStorage.getItem('subtle_session_temporary')
-        console.log('[AuthContext] Temporary session flag:', isTemporarySession)
-        
-        // Get initial session
-        console.log('[AuthContext] Getting session from Supabase...')
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        console.log('[AuthContext] Session response received')
-        
-        if (!mounted) {
-          console.log('[AuthContext] Component unmounted, aborting')
-          return
-        }
-        
-        if (error) {
-          console.error('[AuthContext] Session error:', error)
-          handleAuthError(error)
-          setLoading(false)
-        } else if (session) {
-          console.log('[AuthContext] Session found:', { userId: session.user.id, email: session.user.email })
-          
-          // Handle temporary session cleanup
-          if (isTemporarySession && !sessionStorage.getItem('subtle_session_active')) {
-            console.log('[AuthContext] Clearing temporary session')
-            await supabase.auth.signOut()
-            sessionStorage.removeItem('subtle_session_temporary')
-            setLoading(false)
-          } else {
-            console.log('[AuthContext] Valid session found, setting state')
-            setSession(session)
-            setUser(session.user)
-            authStateProcessed.current = true
-            
-            // Fetch profile but ensure loading is set to false regardless
-            try {
-              console.log('[AuthContext] About to fetch profile for user:', session.user.id)
-              await fetchProfile(session.user.id)
-              console.log('[AuthContext] Profile fetch completed')
-            } catch (error) {
-              console.error('[AuthContext] Profile fetch failed:', error)
-            } finally {
-              // ALWAYS set loading to false after profile fetch attempt
-              console.log('[AuthContext] Setting loading to false')
-              setLoading(false)
-              sessionStorage.setItem('subtle_session_active', 'true')
-            }
-          }
-        } else {
-          console.log('[AuthContext] No session found')
-          authStateProcessed.current = true
-          setIsFromMacAppBridge(false)
-          setLoading(false)
-        }
-      } catch (error) {
-        console.error('[AuthContext] Critical error during initialization:', error)
-        if (mounted) {
-          console.log('[AuthContext] Setting loading to false due to error')
-          setLoading(false)
-        }
+      if (error) {
+        console.error('[AuthContext] Failed to get session:', error)
+        handleAuthError(error)
+        return
       }
+
+      if (currentSession) {
+        console.log('[AuthContext] Found existing session for user:', currentSession.user.id)
+        
+        setSession(currentSession)
+        setUser(currentSession.user)
+        
+        // Mark session as active immediately if it exists
+        sessionStorage.setItem('subtle_session_active', 'true')
+        
+        // Fetch profile
+        const userProfile = await fetchProfile(currentSession.user.id)
+        if (userProfile) {
+          setProfile(userProfile)
+        }
+        
+        // Handle temporary session - but only on browser close, not navigation
+        const isTemporary = sessionStorage.getItem('subtle_session_temporary') === 'true'
+        if (isTemporary) {
+          console.log('[AuthContext] Temporary session detected, will clear on browser close')
+        }
+      } else {
+        console.log('[AuthContext] No active session found')
+      }
+    } catch (error) {
+      console.error('[AuthContext] Initialization error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [fetchProfile, handleBridgeTokenAuth])
+
+  // Initialize auth on mount
+  useEffect(() => {
+    // Prevent multiple simultaneous initializations
+    if (initializationRef.current) {
+      console.log('[AuthContext] Initialization already in progress')
+      return
     }
 
-    // Start initialization immediately
-    initAuth()
+    initializationRef.current = initializeAuth()
 
-    // Subscribe to auth changes
+    // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, currentSession: Session | null) => {
-        if (!mounted) return
+        console.log('[AuthContext] Auth state change:', event, { 
+          hasSession: !!currentSession,
+          userId: currentSession?.user?.id 
+        })
 
-        console.log('Auth event:', event)
-        
-        // Skip duplicate processing for initial session
-        if (event === 'INITIAL_SESSION' && authStateProcessed.current) {
-          console.log('[AuthContext] Skipping INITIAL_SESSION - already processed')
-          return
-        }
-        
-        // Update session and user if changed
-        setSession(currentSession)
-        setUser(currentSession?.user ?? null)
-        
-        // Update Mac app bridge status
-        const isBridge = sessionStorage.getItem('subtle_session_source') === 'mac_app_bridge'
-        setIsFromMacAppBridge(isBridge)
-        
         switch (event) {
-          case 'INITIAL_SESSION':
-            // Mark as processed
-            authStateProcessed.current = true
-            break
-            
           case 'SIGNED_IN':
-            // Skip if we're still initializing
-            if (loading) {
-              console.log('[AuthContext] Skipping SIGNED_IN profile fetch - still initializing')
-              break
-            }
-            // Skip if we already have the profile
-            if (currentSession?.user && currentSession.user.id !== profile?.id) {
-              await fetchProfile(currentSession.user.id, true)
+            setSession(currentSession)
+            setUser(currentSession?.user ?? null)
+            sessionStorage.setItem('subtle_session_active', 'true')
+            
+            if (currentSession?.user) {
+              const userProfile = await fetchProfile(currentSession.user.id)
+              if (userProfile) {
+                setProfile(userProfile)
+              }
             }
             break
-            
+
           case 'SIGNED_OUT':
+            console.log('[AuthContext] User signed out')
+            setSession(null)
+            setUser(null)
             setProfile(null)
             setError(null)
             setIsFromMacAppBridge(false)
-            authStateProcessed.current = false
+            
+            // Clear all session storage
+            sessionStorage.removeItem('subtle_session_temporary')
+            sessionStorage.removeItem('subtle_session_active')
+            sessionStorage.removeItem('subtle_session_source')
+            sessionStorage.removeItem('subtle_bridge_token_used')
             
             // Cleanup session sync service
             if (sessionSyncService.current) {
-              await sessionSyncService.current.cleanup()
+              sessionSyncService.current.cleanup()
             }
             break
-            
+
           case 'USER_UPDATED':
+            setSession(currentSession)
+            setUser(currentSession?.user ?? null)
+            
             if (currentSession?.user) {
-              await fetchProfile(currentSession.user.id)
+              const userProfile = await fetchProfile(currentSession.user.id)
+              if (userProfile) {
+                setProfile(userProfile)
+              }
             }
+            break
+
+          case 'TOKEN_REFRESHED':
+            setSession(currentSession)
             break
         }
       }
     )
 
+    authSubscriptionRef.current = subscription
+
     // Session refresh interval
     const refreshInterval = setInterval(async () => {
-      if (!mounted) return
-      
       const { data: { session: currentSession } } = await supabase.auth.getSession()
       if (currentSession?.expires_at) {
         const expiresAt = new Date(currentSession.expires_at * 1000)
         const now = new Date()
         const timeUntilExpiry = expiresAt.getTime() - now.getTime()
         
+        // Refresh if less than 60 seconds until expiry
         if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
-          refreshSession()
+          console.log('[AuthContext] Refreshing session - expires soon')
+          await refreshSession()
         }
       }
-    }, 30000)
+    }, 30000) // Check every 30 seconds
 
-    // Cleanup
+    // Handle browser/tab close for temporary sessions
     const handleBeforeUnload = () => {
+      const isTemporary = sessionStorage.getItem('subtle_session_temporary') === 'true'
+      if (isTemporary) {
+        // Sign out synchronously on browser close
+        navigator.sendBeacon(`${supabaseUrl}/auth/v1/logout`, JSON.stringify({
+          access_token: session?.access_token
+        }))
+      }
       sessionStorage.removeItem('subtle_session_active')
     }
     
     window.addEventListener('beforeunload', handleBeforeUnload)
 
+    // Cleanup
     return () => {
-      mounted = false
-      isInitialized.current = false
-      authStateProcessed.current = false
-      subscription.unsubscribe()
+      initializationRef.current = null
+      authSubscriptionRef.current?.unsubscribe()
       clearInterval(refreshInterval)
       window.removeEventListener('beforeunload', handleBeforeUnload)
       
-      // Cleanup session sync service
       if (sessionSyncService.current) {
         sessionSyncService.current.cleanup()
       }
     }
-  }, [fetchProfile, refreshSession, loading, profile?.id, handleBridgeTokenAuth])
+  }, []) // Empty deps - only run once on mount
 
+  // Auth methods
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
       setError(null)
@@ -464,8 +358,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       return { error }
     } catch (err) {
-      console.error('Sign up error:', err)
-      return { error: err as AuthError }
+      const error = err as AuthError
+      handleAuthError(error)
+      return { error }
     }
   }
 
@@ -480,14 +375,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       if (error) {
         handleAuthError(error)
-      } else if (!rememberMe) {
-        sessionStorage.setItem('subtle_session_temporary', 'true')
+        return { error }
       }
       
-      return { error }
+      // Set temporary session flag if remember me is false
+      if (!rememberMe) {
+        sessionStorage.setItem('subtle_session_temporary', 'true')
+      } else {
+        sessionStorage.removeItem('subtle_session_temporary')
+      }
+      
+      // Mark session as active immediately after successful login
+      sessionStorage.setItem('subtle_session_active', 'true')
+      
+      return { error: null }
     } catch (err) {
-      console.error('Sign in error:', err)
-      return { error: err as AuthError }
+      const error = err as AuthError
+      handleAuthError(error)
+      return { error }
     }
   }
 
@@ -495,14 +400,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setError(null)
       
-      let redirectUrl = `${window.location.origin}/auth/callback`;
+      let redirectUrl = `${window.location.origin}/auth/callback`
       
       if (options?.desktopAuth && options?.returnUrl) {
-        // For desktop auth, preserve the original desktop-login URL with all parameters
-        redirectUrl = `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(options.returnUrl)}&desktopAuth=true`;
+        redirectUrl = `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(options.returnUrl)}&desktopAuth=true`
       } else if (options?.returnUrl) {
-        // Regular web auth with return URL
-        redirectUrl = `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(options.returnUrl)}`;
+        redirectUrl = `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(options.returnUrl)}`
       }
       
       const { error } = await supabase.auth.signInWithOtp({
@@ -518,8 +421,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       return { error }
     } catch (err) {
-      console.error('Magic link error:', err)
-      return { error: err as AuthError }
+      const error = err as AuthError
+      handleAuthError(error)
+      return { error }
     }
   }
 
@@ -539,8 +443,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       return { error }
     } catch (err) {
-      console.error('OAuth error:', err)
-      return { error: err as AuthError }
+      const error = err as AuthError
+      handleAuthError(error)
+      return { error }
     }
   }
 
@@ -548,7 +453,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setError(null)
       
-      // Cleanup session sync service
+      // Cleanup session sync service first
       if (sessionSyncService.current) {
         await sessionSyncService.current.cleanup()
       }
@@ -557,18 +462,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       if (error) {
         handleAuthError(error)
-      } else {
-        sessionStorage.removeItem('subtle_session_temporary')
-        sessionStorage.removeItem('subtle_session_active')
-        sessionStorage.removeItem('subtle_session_source')
-        sessionStorage.removeItem('subtle_bridge_token_used')
-        setIsFromMacAppBridge(false)
       }
       
       return { error }
     } catch (err) {
-      console.error('Sign out error:', err)
-      return { error: err as AuthError }
+      const error = err as AuthError
+      handleAuthError(error)
+      return { error }
     }
   }
 
@@ -585,8 +485,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       return { error }
     } catch (err) {
-      console.error('Reset password error:', err)
-      return { error: err as AuthError }
+      const error = err as AuthError
+      handleAuthError(error)
+      return { error }
     }
   }
 
@@ -603,8 +504,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       return { error }
     } catch (err) {
-      console.error('Update password error:', err)
-      return { error: err as AuthError }
+      const error = err as AuthError
+      handleAuthError(error)
+      return { error }
+    }
+  }
+
+  const refreshSession = async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession()
+      if (error) {
+        handleAuthError(error)
+        return { error }
+      }
+      
+      if (data.session) {
+        setSession(data.session)
+        setUser(data.user)
+      }
+      
+      return { error: null }
+    } catch (err) {
+      const error = err as AuthError
+      handleAuthError(error)
+      return { error }
     }
   }
 
@@ -629,7 +552,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }
 
-  // Broadcast settings change to Mac app
   const broadcastSettingsChange = async (settings: Record<string, any>) => {
     if (sessionSyncService.current && isFromMacAppBridge) {
       try {
