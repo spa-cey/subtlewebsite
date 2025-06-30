@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Create streaming completion
     const stream = await openai.chat.completions.create({
       model: validatedData.model || 'gpt-4',
-      messages: validatedData.messages,
+      messages: validatedData.messages as any,
       temperature: validatedData.temperature ?? 0.7,
       max_tokens: validatedData.max_tokens,
       stream: true

@@ -73,12 +73,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
         usage: {
           tokens: usage._sum.totalTokens || 0,
-          cost: usage._sum.cost || 0,
+          cost: Number(usage._sum.cost) || 0,
           requests: usage._count.id || 0
         },
         remaining: {
           tokens: userQuota.tokens === -1 ? -1 : Math.max(0, userQuota.tokens - (usage._sum.totalTokens || 0)),
-          cost: userQuota.cost === -1 ? -1 : Math.max(0, userQuota.cost - (usage._sum.cost || 0))
+          cost: userQuota.cost === -1 ? -1 : Math.max(0, userQuota.cost - Number(usage._sum.cost || 0))
         },
         periodStart: startOfMonth.toISOString(),
         periodEnd: new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0).toISOString()
