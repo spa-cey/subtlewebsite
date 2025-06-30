@@ -88,8 +88,13 @@ const ProfilePage: React.FC = () => {
                 <Mail className="h-4 w-4 mr-1" />
                 {user.email}
               </div>
-              <Badge variant="secondary" className="text-xs">
-                {profile?.subscriptionTier || 'Free'}
+              <Badge 
+                variant={user?.subscriptionTier === 'admin' ? 'destructive' : 'secondary'} 
+                className="text-xs"
+              >
+                {user?.subscriptionTier === 'admin' ? 'Admin' : 
+                 user?.subscriptionTier === 'pro' ? 'Pro' :
+                 user?.subscriptionTier === 'enterprise' ? 'Enterprise' : 'Free'}
               </Badge>
             </div>
             {user.createdAt && (

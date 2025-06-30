@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import desktopAuthRoutes from './desktop-auth';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -257,5 +258,8 @@ router.post('/logout', async (req, res) => {
     message: 'Logged out successfully'
   });
 });
+
+// Mount desktop auth routes
+router.use('/desktop', desktopAuthRoutes);
 
 export default router;

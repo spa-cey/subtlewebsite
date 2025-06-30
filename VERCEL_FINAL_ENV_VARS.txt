@@ -1,0 +1,63 @@
+==================================================
+COPY THESE EXACT VALUES TO VERCEL ENVIRONMENT VARIABLES
+==================================================
+
+Go to: Vercel Dashboard → Your Project → Settings → Environment Variables
+
+Add each of these as a separate variable:
+
+DATABASE_URL=postgres://neondb_owner:npg_Eu1bDxAm9VdC@ep-bitter-tooth-a4hv90t4-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
+JWT_SECRET=76cb1ca2e91953636195a783ca19fe53c9753ecf38b1685659eb8e7ca11088ae
+JWT_REFRESH_SECRET=424e6e263fd8a38dc4fe9072ba13e5ca4f1f51bd35cb9466274ac2fd6617bf9a
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+ENCRYPTION_KEY=966a1c152d7580f51373e51ee5829xyz
+ALLOWED_ORIGINS=https://gosubtle.app,https://www.gosubtle.app,subtle://
+FRONTEND_URL=https://gosubtle.app
+ADMIN_EMAIL=admin@gosubtle.app
+DEFAULT_AZURE_API_VERSION=2025-01-01-preview
+LOG_LEVEL=info
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=100
+NODE_ENV=production
+VITE_API_URL=
+VITE_APP_URL=https://gosubtle.app
+VITE_ENABLE_DEV_LOGGING=false
+
+==================================================
+NEXT STEPS
+==================================================
+
+1. ✅ Neon database is already connected! 
+2. Copy all variables above to Vercel Environment Variables
+3. Deploy your project
+4. Run database migrations (see below)
+
+==================================================
+RUN MIGRATIONS AFTER DEPLOYMENT
+==================================================
+
+# First, update your local .env with Neon database
+echo "DATABASE_URL=postgres://neondb_owner:npg_Eu1bDxAm9VdC@ep-bitter-tooth-a4hv90t4-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require" > .env.local
+
+# Generate Prisma client
+npx prisma generate
+
+# Run migrations against Neon database
+npx prisma migrate deploy
+
+==================================================
+TEST YOUR DEPLOYMENT
+==================================================
+
+After deployment, test these endpoints:
+https://your-app.vercel.app/api/auth/me (should return 401)
+https://your-app.vercel.app/api/auth/login (POST with email/password)
+
+==================================================
+UPDATE MAC APP
+==================================================
+
+In your Mac app, update the base URL:
+From: https://localhost:3001/api
+To: https://your-app.vercel.app/api

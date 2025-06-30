@@ -58,9 +58,28 @@ export default function DesktopLogin() {
     setIsRedirecting(true);
 
     try {
-      // Construct the callback URL with token and state
+      // First, get an auth code from the backend
+      const response = await fetch('/api/auth/desktop/initiate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          state,
+          redirectUri
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to initiate desktop authentication');
+      }
+
+      const { authCode } = await response.json();
+
+      // Construct the callback URL with auth code and state
       const callbackUrl = new URL(redirectUri);
-      callbackUrl.searchParams.set("token", session.access_token);
+      callbackUrl.searchParams.set("code", authCode);
       callbackUrl.searchParams.set("state", state);
 
       console.log('[DesktopLogin] Redirecting to:', callbackUrl.toString());

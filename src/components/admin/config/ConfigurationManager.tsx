@@ -50,10 +50,23 @@ const ConfigurationManager: React.FC = () => {
   const fetchConfigs = async () => {
     try {
       setLoading(true);
-      // Note: Azure config management would need backend endpoint
-      // For now, returning mock data
-      const mockConfigs: AzureConfig[] = [];
-      setConfigs(mockConfigs);
+      const response = await apiClient.getAzureConfigs();
+      // Map the API response to match our interface
+      const mappedConfigs: AzureConfig[] = response.configs.map(config => ({
+        id: config.id,
+        name: config.name,
+        endpoint: config.endpoint,
+        api_version: config.apiVersion,
+        is_active: config.isActive,
+        is_primary: config.isPrimary,
+        rate_limit_rpm: config.rateLimitRpm,
+        rate_limit_tpd: config.rateLimitTpd,
+        health_status: config.healthStatus as 'healthy' | 'degraded' | 'unhealthy',
+        last_health_check: config.lastHealthCheck || '',
+        created_at: config.createdAt,
+        updated_at: config.updatedAt,
+      }));
+      setConfigs(mappedConfigs);
     } catch (error) {
       console.error('Error fetching configs:', error);
       toast({
@@ -70,14 +83,20 @@ const ConfigurationManager: React.FC = () => {
     try {
       setTestingConfig(configId);
       
-      // Note: Config test would need backend endpoint
-      // For now, simulating test
-      const data = { responseTime: Math.floor(Math.random() * 500) + 100 };
+      const result = await apiClient.testAzureConfig(configId);
 
+      const toastDescription = result.success 
+        ? `Configuration tested successfully. Response time: ${result.responseTime}ms`
+        : result.details?.error?.reason || `Configuration test failed. Status: ${result.healthStatus}`;
+      
       toast({
-        title: 'Test Successful',
-        description: `Configuration tested successfully. Response time: ${data.responseTime}ms`,
+        title: result.success ? 'Test Successful' : 'Test Failed',
+        description: toastDescription,
+        variant: result.success ? 'default' : 'destructive'
       });
+      
+      // Log details for debugging
+      console.log('Test result:', result);
 
       // Refresh to get updated health status
       await fetchConfigs();
@@ -97,13 +116,11 @@ const ConfigurationManager: React.FC = () => {
     if (!confirm('Are you sure you want to delete this configuration?')) return;
 
     try {
-      // Note: Config deletion would need backend endpoint
-      // For now, just remove from local state
-      setConfigs(configs.filter(c => c.id !== configId));
+      const result = await apiClient.deleteAzureConfig(configId);
 
       toast({
         title: 'Success',
-        description: 'Configuration deleted successfully',
+        description: `Configuration "${result.deletedConfig.name}" deleted successfully`,
       });
 
       await fetchConfigs();

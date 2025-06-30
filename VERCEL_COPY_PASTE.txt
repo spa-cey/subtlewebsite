@@ -1,0 +1,75 @@
+==================================================
+COPY THESE EXACT VALUES TO VERCEL ENVIRONMENT VARIABLES
+==================================================
+
+Go to: Vercel Dashboard → Your Project → Settings → Environment Variables
+
+Add each of these as a separate variable:
+
+JWT_SECRET=76cb1ca2e91953636195a783ca19fe53c9753ecf38b1685659eb8e7ca11088ae
+JWT_REFRESH_SECRET=424e6e263fd8a38dc4fe9072ba13e5ca4f1f51bd35cb9466274ac2fd6617bf9a
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+ENCRYPTION_KEY=966a1c152d7580f51373e51ee5829xyz
+ALLOWED_ORIGINS=https://gosubtle.app,https://www.gosubtle.app,subtle://
+FRONTEND_URL=https://gosubtle.app
+ADMIN_EMAIL=admin@gosubtle.app
+DEFAULT_AZURE_API_VERSION=2025-01-01-preview
+LOG_LEVEL=info
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=100
+NODE_ENV=production
+VITE_API_URL=
+VITE_APP_URL=https://gosubtle.app
+VITE_ENABLE_DEV_LOGGING=false
+
+==================================================
+DATABASE SETUP (CHOOSE ONE)
+==================================================
+
+OPTION 1: Use Neon (Recommended)
+1. In Vercel, go to Storage → Browse → Neon
+2. Click "Get Started" 
+3. It will automatically add DATABASE_URL to your project
+
+OPTION 2: Use Supabase (You're familiar with it)
+1. In Vercel, go to Storage → Browse → Supabase
+2. Connect your existing Supabase project OR create new
+3. It will add DATABASE_URL automatically
+
+OPTION 3: Use your existing database
+Add this manually in Vercel:
+DATABASE_URL=postgresql://postgres:space@YOUR_DATABASE_HOST:5432/subtle_db?sslmode=require
+
+(Replace YOUR_DATABASE_HOST with actual host, not localhost)
+
+==================================================
+OPTIONAL: Vercel KV (for better auth code storage)
+==================================================
+
+1. Go to Storage → Create → KV
+2. It will automatically add:
+   - KV_REST_API_URL
+   - KV_REST_API_TOKEN
+
+==================================================
+DEPLOYMENT STEPS
+==================================================
+
+1. Add all environment variables above
+2. Set up database (choose one option above)
+3. Deploy your project
+4. Run migrations:
+   npx prisma migrate deploy
+
+==================================================
+WHAT CHANGED?
+==================================================
+
+✅ All .env files now have the same structure
+✅ Removed all Supabase references
+✅ Added all necessary backend variables
+✅ JWT secrets are secure random values
+✅ Encryption key is exactly 32 characters
+✅ CORS includes your domain and subtle://
+✅ Frontend uses relative /api paths in production

@@ -25,7 +25,7 @@ export function SubscriptionManagement() {
   // Mock usage data for QuotaStatus - in real app this would come from user context or separate hook
   const mockUsageData = {
     used: 45, // This would come from a usage tracking service in a real app
-    limit: subscriptionTier === 'pro' ? 2500 : subscriptionTier === 'enterprise' ? 10000 : 100,
+    limit: subscriptionTier === 'admin' ? 999999 : subscriptionTier === 'pro' ? 2500 : subscriptionTier === 'enterprise' ? 10000 : 100,
     resetDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
   };
 
@@ -62,6 +62,8 @@ export function SubscriptionManagement() {
 
   const getTierDisplayName = (tier: string) => {
     switch (tier) {
+      case 'admin':
+        return 'Administrator';
       case 'pro':
         return 'Professional';
       case 'team':
@@ -75,6 +77,7 @@ export function SubscriptionManagement() {
 
   const getTierIcon = (tier: string) => {
     if (tier === 'free') return null;
+    if (tier === 'admin') return <Crown className="h-4 w-4 text-red-500" />;
     return <Crown className="h-4 w-4 text-yellow-500" />;
   };
 
@@ -152,18 +155,20 @@ export function SubscriptionManagement() {
         </CardContent>
       </Card>
 
-      {/* Plan Management */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Plan Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PlanUpgrade 
-            currentPlan={getTierDisplayName(subscriptionTier)}
-            onSelectPlan={handlePlanSelect}
-          />
-        </CardContent>
-      </Card>
+      {/* Plan Management - Hide for admin users */}
+      {subscriptionTier !== 'admin' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Plan Management</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PlanUpgrade 
+              currentPlan={getTierDisplayName(subscriptionTier)}
+              onSelectPlan={handlePlanSelect}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Billing History */}
       <Card>
@@ -260,8 +265,8 @@ export function SubscriptionManagement() {
         </CardContent>
       </Card>
 
-      {/* Account Actions */}
-      {subscriptionTier !== 'free' && (
+      {/* Account Actions - Hide for admin users */}
+      {subscriptionTier !== 'free' && subscriptionTier !== 'admin' && (
         <Card>
           <CardHeader>
             <CardTitle>Account Actions</CardTitle>

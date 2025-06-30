@@ -9,8 +9,22 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 
+interface AzureConfig {
+  id: string;
+  name: string;
+  endpoint: string;
+  api_version: string;
+  deployment_name: string;
+  is_active: boolean;
+  is_primary: boolean;
+  rate_limit_rpm: number;
+  rate_limit_tpd: number;
+  health_status: string;
+  last_health_check: string;
+}
+
 interface ConfigFormProps {
-  config?: any;
+  config?: AzureConfig | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -21,13 +35,13 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
   const [formData, setFormData] = useState({
     name: config?.name || '',
     endpoint: config?.endpoint || '',
-    api_key: '',
-    api_version: config?.api_version || '2024-02-15-preview',
-    deployment_name: config?.deployment_name || '',
-    is_active: config?.is_active ?? true,
-    is_primary: config?.is_primary ?? false,
-    rate_limit_rpm: config?.rate_limit_rpm || 60,
-    rate_limit_tpd: config?.rate_limit_tpd || 100000,
+    apiKey: '',
+    apiVersion: config?.api_version || '2025-01-01-preview',
+    deploymentName: config?.deployment_name || '',
+    isActive: config?.is_active ?? true,
+    isPrimary: config?.is_primary ?? false,
+    rateLimitRpm: config?.rate_limit_rpm || 60,
+    rateLimitTpd: config?.rate_limit_tpd || 100000,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,17 +49,22 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
     setLoading(true);
 
     try {
-      const payload = {
-        ...formData,
-        // Only include api_key if it's been changed
-        ...(formData.api_key ? { api_key: formData.api_key } : {})
-      };
-
       if (config) {
         // Update existing config
-        // Note: Azure config management would need backend endpoint
-        // For now, simulating with a simple update
-        await apiClient.updateUser(config.id, payload as any);
+        const updateData: any = {};
+        
+        // Only include changed fields
+        if (formData.name !== config.name) updateData.name = formData.name;
+        if (formData.endpoint !== config.endpoint) updateData.endpoint = formData.endpoint;
+        if (formData.apiKey) updateData.apiKey = formData.apiKey;
+        if (formData.apiVersion !== config.api_version) updateData.apiVersion = formData.apiVersion;
+        if (formData.deploymentName !== config.deployment_name) updateData.deploymentName = formData.deploymentName;
+        if (formData.isActive !== config.is_active) updateData.isActive = formData.isActive;
+        if (formData.isPrimary !== config.is_primary) updateData.isPrimary = formData.isPrimary;
+        if (formData.rateLimitRpm !== config.rate_limit_rpm) updateData.rateLimitRpm = formData.rateLimitRpm;
+        if (formData.rateLimitTpd !== config.rate_limit_tpd) updateData.rateLimitTpd = formData.rateLimitTpd;
+
+        await apiClient.updateAzureConfig(config.id, updateData);
 
         toast({
           title: 'Success',
@@ -53,7 +72,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
         });
       } else {
         // Create new config
-        if (!formData.api_key) {
+        if (!formData.apiKey) {
           toast({
             title: 'Error',
             description: 'API key is required for new configurations',
@@ -63,10 +82,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
           return;
         }
 
-        // Create new config
-        // Note: Azure config management would need backend endpoint
-        // For now, simulating with a simple update
-        await apiClient.updateUser('new-config', payload as any);
+        await apiClient.createAzureConfig(formData);
 
         toast({
           title: 'Success',
@@ -79,7 +95,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
       console.error('Error saving config:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to save configuration',
+        description: error.response?.data?.error?.message || error.message || 'Failed to save configuration',
         variant: 'destructive'
       });
     } finally {
@@ -121,12 +137,12 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
             </div>
 
             <div className="col-span-2">
-              <Label htmlFor="api_key">API Key</Label>
+              <Label htmlFor="apiKey">API Key</Label>
               <Input
-                id="api_key"
+                id="apiKey"
                 type="password"
-                value={formData.api_key}
-                onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+                value={formData.apiKey}
+                onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
                 placeholder={config ? 'Leave blank to keep existing' : 'Enter API key'}
                 required={!config}
               />
@@ -138,26 +154,27 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
             </div>
 
             <div>
-              <Label htmlFor="deployment_name">Deployment Name</Label>
+              <Label htmlFor="deploymentName">Deployment Name</Label>
               <Input
-                id="deployment_name"
-                value={formData.deployment_name}
-                onChange={(e) => setFormData({ ...formData, deployment_name: e.target.value })}
+                id="deploymentName"
+                value={formData.deploymentName}
+                onChange={(e) => setFormData({ ...formData, deploymentName: e.target.value })}
                 placeholder="gpt-35-turbo"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="api_version">API Version</Label>
+              <Label htmlFor="apiVersion">API Version</Label>
               <Select
-                value={formData.api_version}
-                onValueChange={(value) => setFormData({ ...formData, api_version: value })}
+                value={formData.apiVersion}
+                onValueChange={(value) => setFormData({ ...formData, apiVersion: value })}
               >
-                <SelectTrigger id="api_version">
+                <SelectTrigger id="apiVersion">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="2025-01-01-preview">2025-01-01-preview</SelectItem>
                   <SelectItem value="2024-02-15-preview">2024-02-15-preview</SelectItem>
                   <SelectItem value="2023-12-01-preview">2023-12-01-preview</SelectItem>
                   <SelectItem value="2023-05-15">2023-05-15</SelectItem>
@@ -166,24 +183,24 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
             </div>
 
             <div>
-              <Label htmlFor="rate_limit_rpm">Rate Limit (RPM)</Label>
+              <Label htmlFor="rateLimitRpm">Rate Limit (RPM)</Label>
               <Input
-                id="rate_limit_rpm"
+                id="rateLimitRpm"
                 type="number"
-                value={formData.rate_limit_rpm}
-                onChange={(e) => setFormData({ ...formData, rate_limit_rpm: parseInt(e.target.value) })}
+                value={formData.rateLimitRpm}
+                onChange={(e) => setFormData({ ...formData, rateLimitRpm: parseInt(e.target.value) })}
                 min="1"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="rate_limit_tpd">Token Limit (TPD)</Label>
+              <Label htmlFor="rateLimitTpd">Token Limit (TPD)</Label>
               <Input
-                id="rate_limit_tpd"
+                id="rateLimitTpd"
                 type="number"
-                value={formData.rate_limit_tpd}
-                onChange={(e) => setFormData({ ...formData, rate_limit_tpd: parseInt(e.target.value) })}
+                value={formData.rateLimitTpd}
+                onChange={(e) => setFormData({ ...formData, rateLimitTpd: parseInt(e.target.value) })}
                 min="1000"
                 required
               />
@@ -197,9 +214,9 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
                 <p className="text-sm text-gray-500">Enable this configuration for use</p>
               </div>
               <Switch
-                id="is_active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                id="isActive"
+                checked={formData.isActive}
+                onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
               />
             </div>
 
@@ -209,9 +226,9 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, onClose, onSuccess }) =
                 <p className="text-sm text-gray-500">Use as the main configuration</p>
               </div>
               <Switch
-                id="is_primary"
-                checked={formData.is_primary}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_primary: checked })}
+                id="isPrimary"
+                checked={formData.isPrimary}
+                onCheckedChange={(checked) => setFormData({ ...formData, isPrimary: checked })}
               />
             </div>
           </div>

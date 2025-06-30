@@ -37,7 +37,7 @@ class ApiClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
+      baseURL: import.meta.env.VITE_API_URL || '/api',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -153,7 +153,7 @@ class ApiClient {
     this.refreshPromise = (async () => {
       try {
         const response = await axios.post(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/auth/refresh`,
+          `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
           { refreshToken }
         )
 
@@ -359,6 +359,96 @@ class ApiClient {
     const response = await this.client.get(`/analytics/users/${userId}`, {
       params: { timeRange }
     })
+    return response.data
+  }
+
+  // Admin: Azure Config methods
+  async getAzureConfigs(): Promise<{
+    configs: Array<{
+      id: string
+      name: string
+      endpoint: string
+      apiVersion: string
+      deploymentName: string
+      isActive: boolean
+      isPrimary: boolean
+      rateLimitRpm: number
+      rateLimitTpd: number
+      healthStatus: string
+      lastHealthCheck: string | null
+      hasApiKey: boolean
+      createdAt: string
+      updatedAt: string
+    }>
+  }> {
+    const response = await this.client.get('/admin/configs')
+    return response.data
+  }
+
+  async getAzureConfig(id: string): Promise<{
+    config: {
+      id: string
+      name: string
+      endpoint: string
+      apiVersion: string
+      deploymentName: string
+      isActive: boolean
+      isPrimary: boolean
+      rateLimitRpm: number
+      rateLimitTpd: number
+      healthStatus: string
+      lastHealthCheck: string | null
+      hasApiKey: boolean
+      createdAt: string
+      updatedAt: string
+    }
+  }> {
+    const response = await this.client.get(`/admin/configs/${id}`)
+    return response.data
+  }
+
+  async createAzureConfig(data: {
+    name: string
+    endpoint: string
+    apiKey: string
+    apiVersion: string
+    deploymentName: string
+    isActive?: boolean
+    isPrimary?: boolean
+    rateLimitRpm?: number
+    rateLimitTpd?: number
+  }): Promise<{ config: any }> {
+    const response = await this.client.post('/admin/configs', data)
+    return response.data
+  }
+
+  async updateAzureConfig(id: string, data: {
+    name?: string
+    endpoint?: string
+    apiKey?: string
+    apiVersion?: string
+    deploymentName?: string
+    isActive?: boolean
+    isPrimary?: boolean
+    rateLimitRpm?: number
+    rateLimitTpd?: number
+  }): Promise<{ config: any }> {
+    const response = await this.client.patch(`/admin/configs/${id}`, data)
+    return response.data
+  }
+
+  async deleteAzureConfig(id: string): Promise<{ message: string; deletedConfig: { id: string; name: string } }> {
+    const response = await this.client.delete(`/admin/configs/${id}`)
+    return response.data
+  }
+
+  async testAzureConfig(id: string): Promise<{
+    success: boolean
+    healthStatus: string
+    responseTime: number
+    timestamp: string
+  }> {
+    const response = await this.client.post(`/admin/configs/${id}/test`)
     return response.data
   }
 

@@ -32,9 +32,6 @@ export default function Login() {
     if (error === 'auth_callback_failed') {
       setError('Authentication failed. Please try again.')
     }
-    
-    // Check if remember me was previously selected
-    setRememberMe(savedRememberMe)
   }, [searchParams])
 
   const validateEmail = (email: string) => {
