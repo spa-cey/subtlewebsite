@@ -21,7 +21,7 @@ export function ProfileInformation() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<ProfileFormData>({
-    full_name: profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || '',
+    full_name: profile?.fullName || user?.fullName || user?.email?.split('@')[0] || '',
     email: user?.email || '',
   });
 
@@ -35,7 +35,7 @@ export function ProfileInformation() {
     setIsLoading(true);
     try {
       const { error } = await updateProfile({
-        full_name: formData.full_name,
+        fullName: formData.full_name,
         email: formData.email,
       });
 
@@ -62,7 +62,7 @@ export function ProfileInformation() {
 
   const handleCancel = () => {
     setFormData({
-      full_name: profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || '',
+      full_name: profile?.fullName || user?.fullName || user?.email?.split('@')[0] || '',
       email: user?.email || '',
     });
     setIsEditing(false);
@@ -119,7 +119,7 @@ export function ProfileInformation() {
             <div className="relative">
               <Avatar className="h-20 w-20">
                 <AvatarImage 
-                  src={profile?.avatar_url || user.user_metadata?.avatar_url} 
+                  src={profile?.avatarUrl || user.avatarUrl}
                   alt={formData.full_name} 
                 />
                 <AvatarFallback className="text-lg">
@@ -138,7 +138,7 @@ export function ProfileInformation() {
             <div>
               <h3 className="text-lg font-semibold">{formData.full_name}</h3>
               <p className="text-muted-foreground">{formData.email}</p>
-              {user.email_confirmed_at && (
+              {user.emailVerified && (
                 <Badge variant="secondary" className="mt-1">
                   <Mail className="h-3 w-3 mr-1" />
                   Email Verified
@@ -183,7 +183,7 @@ export function ProfileInformation() {
                 ) : (
                   <div className="px-3 py-2 bg-muted rounded-md flex items-center gap-2">
                     {formData.email}
-                    {user.email_confirmed_at && (
+                    {user.emailVerified && (
                       <Badge variant="outline" className="text-xs">
                         Verified
                       </Badge>
@@ -242,7 +242,7 @@ export function ProfileInformation() {
               <Label className="text-sm font-medium text-muted-foreground">Account Created</Label>
               <div className="px-3 py-2 bg-muted rounded-md flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                {formatDate(user.created_at)}
+                {formatDate(user.createdAt)}
               </div>
             </div>
 
@@ -250,14 +250,14 @@ export function ProfileInformation() {
               <Label className="text-sm font-medium text-muted-foreground">Last Sign In</Label>
               <div className="px-3 py-2 bg-muted rounded-md flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                {formatDate(user.last_sign_in_at)}
+                {formatDate(user.lastSignInAt || undefined)}
               </div>
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-medium text-muted-foreground">Email Confirmed</Label>
               <div className="px-3 py-2 bg-muted rounded-md">
-                {user.email_confirmed_at ? formatDate(user.email_confirmed_at) : 'Not confirmed'}
+                {user.emailVerified ? 'Verified' : 'Not verified'}
               </div>
             </div>
           </div>

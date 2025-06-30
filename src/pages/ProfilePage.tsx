@@ -74,14 +74,14 @@ const ProfilePage: React.FC = () => {
         {/* Profile Header */}
         <div className="flex items-center space-x-6 mb-8">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={profile?.avatar_url || user.user_metadata?.avatar_url} />
+            <AvatarImage src={profile?.avatarUrl || user.avatarUrl} />
             <AvatarFallback className="text-lg font-semibold">
               {getUserInitials(user.email || '')}
             </AvatarFallback>
           </Avatar>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {profile?.full_name || user.user_metadata?.full_name || user.email}
+              {profile?.fullName || user.fullName || user.email}
             </h1>
             <div className="flex items-center space-x-4 mt-2">
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
@@ -89,13 +89,13 @@ const ProfilePage: React.FC = () => {
                 {user.email}
               </div>
               <Badge variant="secondary" className="text-xs">
-                {profile?.subscription_tier || 'Free'}
+                {profile?.subscriptionTier || 'Free'}
               </Badge>
             </div>
-            {user.created_at && (
+            {user.createdAt && (
               <div className="flex items-center text-sm text-gray-500 dark:text-gray-500 mt-1">
                 <Calendar className="h-4 w-4 mr-1" />
-                Member since {formatDate(user.created_at)}
+                Member since {formatDate(user.createdAt)}
               </div>
             )}
           </div>

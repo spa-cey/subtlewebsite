@@ -17,15 +17,15 @@ export function SubscriptionManagement() {
   const { data: billingHistory, isLoading: isLoadingBilling } = useBillingHistory(user?.id || '');
 
   // Get subscription tier from user profile
-  const subscriptionTier = profile?.subscription_tier || user?.user_metadata?.subscription_tier || 'free';
-  const billingCycle = user?.user_metadata?.billing_cycle || null;
-  const nextBillingDate = user?.user_metadata?.next_billing_date || null;
-  const paymentMethod = user?.user_metadata?.payment_method || null;
+  const subscriptionTier = profile?.subscriptionTier || user?.subscriptionTier || 'free';
+  const billingCycle = null; // user?.user_metadata?.billing_cycle || null;
+  const nextBillingDate = null; // user?.user_metadata?.next_billing_date || null;
+  const paymentMethod = null; // user?.user_metadata?.payment_method || null;
 
   // Mock usage data for QuotaStatus - in real app this would come from user context or separate hook
   const mockUsageData = {
     used: 45, // This would come from a usage tracking service in a real app
-    limit: subscriptionTier === 'pro' ? 2500 : subscriptionTier === 'team' ? 10000 : 100,
+    limit: subscriptionTier === 'pro' ? 2500 : subscriptionTier === 'enterprise' ? 10000 : 100,
     resetDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
   };
 

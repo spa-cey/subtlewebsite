@@ -13,16 +13,17 @@ import {
   Clock,
   BarChart3
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface UserDetailsModalProps {
   user: any;
+  isOpen: boolean;
   onClose: () => void;
-  onUpdate: () => void;
+  onUpdate: (userId: string, updates: Partial<any>) => void;
 }
 
-const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUpdate }) => {
+const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, isOpen, onClose, onUpdate }) => {
   const [usageHistory, setUsageHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,21 +35,12 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUp
     try {
       setLoading(true);
       
-      // Fetch usage history for the last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const { data, error } = await supabase
-        .from('user_usage_metrics')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('created_at', thirtyDaysAgo.toISOString())
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
+      // Fetch user usage analytics from backend
+      const data = await apiClient.getUserUsageAnalytics(user.id, 'weekly');
+      const usageData = data.usage || [];
 
       // Group by day for charts
-      const groupedData = (data || []).reduce((acc, record) => {
+      const groupedData = (usageData || []).reduce((acc, record) => {
         const date = new Date(record.created_at).toLocaleDateString();
         if (!acc[date]) {
           acc[date] = {
@@ -83,7 +75,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, onClose, onUp
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">User Details</DialogTitle>

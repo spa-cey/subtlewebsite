@@ -15,7 +15,7 @@ import {
   Send,
   FileText
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/api';
 
 interface MetricData {
   totalUsers: number;
@@ -92,42 +92,14 @@ export default function DashboardOverview() {
     try {
       setError(null);
       
-      // Fetch total users from profiles table
-      const { count: totalUsers, error: usersError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      if (usersError) throw usersError;
-
-      // Fetch active users in last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      // Fetch admin stats from backend
+      const stats = await apiClient.getAdminStats();
       
-      const { count: activeUsers30Days, error: activeError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('last_login', thirtyDaysAgo.toISOString());
-
-      if (activeError) throw activeError;
-
-      // Fetch new users today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const { count: newUsersToday, error: newUsersError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today.toISOString());
-
-      if (newUsersError) throw newUsersError;
-
-      // Fetch active subscriptions
-      const { count: activeSubscriptions, error: subsError } = await supabase
-        .from('user_subscriptions')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-
-      if (subsError) throw subsError;
+      // Extract metrics from the stats response
+      const totalUsers = stats.totalUsers || 0;
+      const activeUsers30Days = stats.activeUsers || 0;
+      const newUsersToday = stats.newUsersToday || 0;
+      const activeSubscriptions = stats.activeSubscriptions || 0;
 
       // Calculate growth metrics (mock data for now - in production, calculate from historical data)
       const userGrowth = 12.5;

@@ -18,7 +18,7 @@ import {
   Shield,
   CreditCard
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient, User } from '@/lib/api';
 import UserDetailsModal from './UserDetailsModal';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -30,72 +30,46 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-interface User {
-  id: string;
-  email: string;
-  full_name: string;
-  subscription_tier: 'free' | 'starter' | 'pro' | 'enterprise';
-  migration_status: 'not_started' | 'in_progress' | 'completed';
-  total_requests: number;
-  total_tokens: number;
-  total_cost: number;
-  created_at: string;
-  last_active: string;
-}
-
 const UserManager: React.FC = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [page, filterTier, sortBy, sortOrder, searchTerm]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
       
-      // First get profiles
-      const { data: profiles, error: profileError } = await supabase
-        .from('users')
-        .select('*');
-
-      if (profileError) throw profileError;
-
-      // Get usage metrics for each user
-      const usersWithMetrics = await Promise.all(
-        (profiles || []).map(async (profile) => {
-          const { data: metrics } = await supabase
-            .from('user_usage_metrics')
-            .select('total_requests, total_tokens, total_cost')
-            .eq('user_id', profile.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-          return {
-            id: profile.id,
-            email: profile.email || '',
-            full_name: profile.full_name || 'Unknown',
-            subscription_tier: profile.subscription_tier || 'free',
-            migration_status: profile.migration_status || 'not_started',
-            total_requests: metrics?.total_requests || 0,
-            total_tokens: metrics?.total_tokens || 0,
-            total_cost: metrics?.total_cost || 0,
-            created_at: profile.created_at,
-            last_active: profile.updated_at || profile.created_at
-          };
-        })
-      );
-
-      setUsers(usersWithMetrics);
+      const params: any = {
+        page,
+        pageSize: 25,
+        sortBy,
+        sortOrder
+      };
+      
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+      
+      if (filterTier !== 'all') {
+        params.subscriptionTier = filterTier;
+      }
+      
+      const response = await apiClient.getUsers(params);
+      setUsers(response.users);
+      setTotalPages(response.pagination.totalPages);
+      
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -108,146 +82,82 @@ const UserManager: React.FC = () => {
     }
   };
 
-  const handleTierChange = async (userId: string, newTier: string) => {
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ subscription_tier: newTier })
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'User tier updated successfully',
-      });
-
-      await fetchUsers();
-    } catch (error) {
-      console.error('Error updating tier:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update user tier',
-        variant: 'destructive'
-      });
-    }
+  const handleUserClick = (user: User) => {
+    setSelectedUser(user);
+    setShowDetailsModal(true);
   };
 
-  const handleBulkOperation = async (operation: string) => {
-    if (selectedUsers.length === 0) {
+  const handleUpdateUser = async (userId: string, updates: Partial<User>) => {
+    try {
+      await apiClient.updateUser(userId, updates);
       toast({
-        title: 'No users selected',
-        description: 'Please select users to perform bulk operations',
+        title: 'Success',
+        description: 'User updated successfully'
+      });
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update user',
         variant: 'destructive'
       });
-      return;
     }
-
-    // Implement bulk operations based on the operation type
-    console.log('Bulk operation:', operation, 'for users:', selectedUsers);
   };
 
   const getTierBadge = (tier: string) => {
-    const colors: Record<string, string> = {
+    const colors = {
       free: 'bg-gray-100 text-gray-800',
-      starter: 'bg-blue-100 text-blue-800',
-      pro: 'bg-purple-100 text-purple-800',
-      enterprise: 'bg-amber-100 text-amber-800'
+      pro: 'bg-blue-100 text-blue-800',
+      enterprise: 'bg-purple-100 text-purple-800',
+      admin: 'bg-red-100 text-red-800'
     };
-
-    return (
-      <Badge className={`${colors[tier] || colors.free} capitalize`}>
-        {tier}
-      </Badge>
-    );
-  };
-
-  const getMigrationBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      not_started: 'bg-gray-100 text-gray-800',
-      in_progress: 'bg-yellow-100 text-yellow-800',
-      completed: 'bg-green-100 text-green-800'
-    };
-
-    const labels: Record<string, string> = {
-      not_started: 'Not Started',
-      in_progress: 'In Progress',
-      completed: 'Completed'
-    };
-
-    return (
-      <Badge className={`${colors[status] || colors.not_started}`}>
-        {labels[status] || status}
-      </Badge>
-    );
-  };
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.full_name.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesTier = filterTier === 'all' || user.subscription_tier === filterTier;
-    const matchesStatus = filterStatus === 'all' || user.migration_status === filterStatus;
-
-    return matchesSearch && matchesTier && matchesStatus;
-  });
-
-  if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <Badge variant="secondary" className={colors[tier as keyof typeof colors] || colors.free}>
+        {tier.charAt(0).toUpperCase() + tier.slice(1)}
+      </Badge>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  if (loading && users.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage user accounts and subscriptions</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline">
+            <Users className="h-4 w-4 mr-2" />
+            Export Users
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">User Management</CardTitle>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                Manage users, tiers, and track migration progress
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {selectedUsers.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      Bulk Actions ({selectedUsers.length})
-                      <ChevronDown className="h-4 w-4 ml-2" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuLabel>Bulk Operations</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleBulkOperation('upgrade')}>
-                      Upgrade Tier
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleBulkOperation('downgrade')}>
-                      Downgrade Tier
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleBulkOperation('migrate')}>
-                      Start Migration
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
+        <CardContent className="p-4">
+          <div className="flex gap-4 items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search by email or name..."
                 value={searchTerm}
@@ -256,138 +166,115 @@ const UserManager: React.FC = () => {
               />
             </div>
             <Select value={filterTier} onValueChange={setFilterTier}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="All Tiers" />
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by tier" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Tiers</SelectItem>
                 <SelectItem value="free">Free</SelectItem>
-                <SelectItem value="starter">Starter</SelectItem>
                 <SelectItem value="pro">Pro</SelectItem>
                 <SelectItem value="enterprise">Enterprise</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="All Statuses" />
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="not_started">Not Started</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="createdAt">Created Date</SelectItem>
+                <SelectItem value="lastSignInAt">Last Active</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="subscriptionTier">Subscription</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            >
+              {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* User List */}
+      {/* Users Table */}
       <Card>
-        <CardContent className="p-0">
+        <CardHeader>
+          <CardTitle>Users ({users.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800 border-b">
-                <tr>
-                  <th className="p-4 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.length === filteredUsers.length}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedUsers(filteredUsers.map(u => u.id));
-                        } else {
-                          setSelectedUsers([]);
-                        }
-                      }}
-                    />
-                  </th>
-                  <th className="p-4 text-left text-sm font-medium text-gray-900 dark:text-white">
-                    User
-                  </th>
-                  <th className="p-4 text-left text-sm font-medium text-gray-900 dark:text-white">
-                    Tier
-                  </th>
-                  <th className="p-4 text-left text-sm font-medium text-gray-900 dark:text-white">
-                    Migration Status
-                  </th>
-                  <th className="p-4 text-left text-sm font-medium text-gray-900 dark:text-white">
-                    Usage
-                  </th>
-                  <th className="p-4 text-left text-sm font-medium text-gray-900 dark:text-white">
-                    Last Active
-                  </th>
-                  <th className="p-4 text-left text-sm font-medium text-gray-900 dark:text-white">
-                    Actions
-                  </th>
+              <thead className="border-b">
+                <tr className="text-left text-sm text-gray-600 dark:text-gray-400">
+                  <th className="pb-3">User</th>
+                  <th className="pb-3">Subscription</th>
+                  <th className="pb-3">Status</th>
+                  <th className="pb-3">Joined</th>
+                  <th className="pb-3">Last Active</th>
+                  <th className="pb-3"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredUsers.map((user) => (
+              <tbody className="divide-y">
+                {users.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td className="p-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedUsers.includes(user.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedUsers([...selectedUsers, user.id]);
-                          } else {
-                            setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-                          }
-                        }}
-                      />
-                    </td>
-                    <td className="p-4">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {user.full_name}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {user.email}
-                        </p>
+                    <td className="py-4">
+                      <div 
+                        className="flex items-center gap-3 cursor-pointer"
+                        onClick={() => handleUserClick(user)}
+                      >
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center text-white font-semibold">
+                          {user.email.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">{user.fullName || 'Unknown'}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                        </div>
                       </div>
                     </td>
-                    <td className="p-4">
-                      {getTierBadge(user.subscription_tier)}
+                    <td className="py-4">
+                      {getTierBadge(user.subscriptionTier)}
                     </td>
-                    <td className="p-4">
-                      {getMigrationBadge(user.migration_status)}
+                    <td className="py-4">
+                      <Badge variant={user.emailVerified ? 'default' : 'secondary'}>
+                        {user.emailVerified ? 'Verified' : 'Unverified'}
+                      </Badge>
                     </td>
-                    <td className="p-4">
-                      <div className="text-sm">
-                        <p>{user.total_requests.toLocaleString()} requests</p>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          ${user.total_cost.toFixed(2)} cost
-                        </p>
-                      </div>
+                    <td className="py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {formatDate(user.createdAt)}
                     </td>
-                    <td className="p-4 text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(user.last_active).toLocaleDateString()}
+                    <td className="py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {user.lastSignInAt ? formatDate(user.lastSignInAt) : 'Never'}
                     </td>
-                    <td className="p-4">
+                    <td className="py-4">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="icon">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => {
-                            setSelectedUser(user);
-                            setShowDetailsModal(true);
-                          }}>
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleUserClick(user)}>
+                            <UserCog className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send Email
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            View Billing
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleTierChange(user.id, 'starter')}>
-                            Change to Starter
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleTierChange(user.id, 'pro')}>
-                            Change to Pro
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleTierChange(user.id, 'enterprise')}>
-                            Change to Enterprise
+                          <DropdownMenuItem className="text-red-600">
+                            <Shield className="h-4 w-4 mr-2" />
+                            Suspend Account
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -397,18 +284,44 @@ const UserManager: React.FC = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination */}
+          <div className="flex justify-between items-center mt-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Page {page} of {totalPages}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(page - 1)}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(page + 1)}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* User Details Modal */}
-      {showDetailsModal && selectedUser && (
+      {selectedUser && (
         <UserDetailsModal
           user={selectedUser}
+          isOpen={showDetailsModal}
           onClose={() => {
             setShowDetailsModal(false);
             setSelectedUser(null);
           }}
-          onUpdate={fetchUsers}
+          onUpdate={handleUpdateUser}
         />
       )}
     </div>

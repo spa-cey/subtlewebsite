@@ -91,11 +91,11 @@ export default function Signup() {
     
     if (error) {
       setError(error.message)
+      setIsLoading(false)
     } else {
-      setSuccess(true)
+      // No email verification needed, redirect to dashboard
+      navigate('/dashboard')
     }
-    
-    setIsLoading(false)
   }
 
   const handleOAuthSignup = async (provider: 'google' | 'github') => {
@@ -111,29 +111,6 @@ export default function Signup() {
     setIsLoading(false)
   }
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="glass-panel border-0 w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <div className="mx-auto w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-4">
-              <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">Check your email</h2>
-            <p className="text-muted-foreground mb-4">
-              We've sent you a confirmation link at <strong>{formData.email}</strong>
-            </p>
-            <p className="text-sm text-muted-foreground mb-6">
-              Click the link in the email to activate your account and start using Subtle.
-            </p>
-            <Button onClick={() => navigate('/login')} className="w-full">
-              Back to Login
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

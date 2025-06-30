@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Migration data exports
+migration/data-export/*.json
+migration/data-export/exports/
+
+# Environment variables
+.env.local
+.netlify

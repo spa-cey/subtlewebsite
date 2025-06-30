@@ -3,7 +3,7 @@ import { User, ROLE_PERMISSIONS } from '@/types/admin';
 import { MoreVertical, Eye, Edit, Key, UserCheck, Ban, Trash2, FileText, LogIn } from 'lucide-react';
 import { useImpersonateUser, useResetPassword, useUpdateUser } from '@/hooks/useUsers';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/api';
 
 interface UserActionMenuProps {
   user: User;
@@ -22,11 +22,13 @@ export default function UserActionMenu({ user, onDelete }: UserActionMenuProps) 
   const [currentUserRole, setCurrentUserRole] = React.useState<string>('admin');
   
   React.useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        // In a real app, you'd fetch the role from the user profile
-        setCurrentUserRole('admin'); // Default for now
+    apiClient.getCurrentUser().then((user) => {
+      if (user) {
+        // Set role based on subscription tier or actual role field
+        setCurrentUserRole(user.subscriptionTier === 'admin' ? 'admin' : 'viewer');
       }
+    }).catch(() => {
+      setCurrentUserRole('viewer'); // Default fallback
     });
   }, []);
 

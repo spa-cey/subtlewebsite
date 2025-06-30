@@ -1,14 +1,19 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react'
-import { User, Session, AuthError, AuthChangeEvent } from '@supabase/supabase-js'
-import { supabase, supabaseUrl, Database } from '@/lib/supabase'
-import { SessionSyncService, getBridgeTokenFromURL, removeBridgeTokenFromURL, isBridgeTokenSyncEnabled } from '@/lib/SessionSyncService'
+import { apiClient, User, AuthResponse } from '@/lib/api'
 
-type Profile = Database['public']['Tables']['users']['Row']
+// Define error interface compatible with existing code
+interface AuthError {
+  message: string
+  code?: string
+}
+
+// Profile type for backward compatibility
+type Profile = User
 
 interface AuthContextType {
   user: User | null
   profile: Profile | null
-  session: Session | null
+  session: { user: User } | null
   loading: boolean
   error: AuthError | null
   isFromMacAppBridge: boolean
@@ -41,134 +46,53 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
+  const [session, setSession] = useState<{ user: User } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<AuthError | null>(null)
   const [isFromMacAppBridge, setIsFromMacAppBridge] = useState(false)
   
   // Track initialization to prevent duplicate operations
   const initializationRef = useRef<Promise<void> | null>(null)
-  const profileFetchCache = useRef<Map<string, Promise<Profile | null>>>(new Map())
-  const sessionSyncService = useRef<SessionSyncService | null>(null)
-  const authSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
 
   // Helper function to handle auth errors
-  const handleAuthError = (error: AuthError) => {
-    setError(error)
-    console.error('Auth error:', error)
+  const handleAuthError = (error: any) => {
+    const authError: AuthError = {
+      message: error?.response?.data?.error || error?.message || 'An error occurred',
+      code: error?.response?.status?.toString() || 'UNKNOWN'
+    }
+    setError(authError)
+    console.error('Auth error:', authError)
   }
 
-  // Simplified fetchProfile with proper caching
-  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
-    // Check cache first
-    const cached = profileFetchCache.current.get(userId)
-    if (cached) {
-      console.log('[AuthContext] Using cached profile fetch for user:', userId)
-      return cached
-    }
-
-    // Create new fetch promise
-    const fetchPromise = (async () => {
-      console.log('[AuthContext] Fetching profile for user:', userId)
-      
-      try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single()
-
-        if (error) {
-          if (error.code === 'PGRST116') {
-            // Profile doesn't exist, create it
-            console.log('[AuthContext] Profile not found, creating new profile')
-            
-            const { data: userData } = await supabase.auth.getUser()
-            if (userData.user?.id === userId) {
-              const newProfileData = {
-                id: userId,
-                email: userData.user.email!,
-                full_name: userData.user.user_metadata?.full_name || null,
-                avatar_url: userData.user.user_metadata?.avatar_url || null,
-                subscription_tier: 'free' as const
-              }
-              
-              const { data: newProfile, error: createError } = await supabase
-                .from('users')
-                .insert(newProfileData)
-                .select()
-                .single()
-
-              if (createError) {
-                console.error('[AuthContext] Failed to create profile:', createError)
-                return null
-              }
-              
-              return newProfile
-            }
-          }
-          console.error('[AuthContext] Profile fetch error:', error)
-          return null
-        }
-
-        return data
-      } catch (err) {
-        console.error('[AuthContext] Unexpected error fetching profile:', err)
-        return null
-      } finally {
-        // Clean up cache after a delay
-        setTimeout(() => {
-          profileFetchCache.current.delete(userId)
-        }, 5000)
-      }
-    })()
-
-    // Cache the promise
-    profileFetchCache.current.set(userId, fetchPromise)
-    return fetchPromise
+  // Set user and session from API response
+  const setUserSession = useCallback((userData: User) => {
+    setUser(userData)
+    setProfile(userData) // Profile is the same as user data
+    setSession({ user: userData })
+    setError(null)
   }, [])
 
-  // Handle bridge token authentication
-  const handleBridgeTokenAuth = useCallback(async (): Promise<Session | null> => {
-    if (!isBridgeTokenSyncEnabled()) {
-      return null
-    }
-
+  // Check for bridge token authentication (Mac app integration)
+  const handleBridgeTokenAuth = useCallback(async (): Promise<boolean> => {
     const bridgeToken = getBridgeTokenFromURL()
     if (!bridgeToken) {
-      return null
+      return false
     }
 
     console.log('[AuthContext] Processing bridge token authentication')
     removeBridgeTokenFromURL()
     
     try {
-      if (!sessionSyncService.current) {
-        sessionSyncService.current = SessionSyncService.getInstance()
-      }
-      
-      const bridgeSession = await sessionSyncService.current.exchangeBridgeToken(bridgeToken)
-      
-      setSession(bridgeSession)
-      setUser(bridgeSession.user)
-      setIsFromMacAppBridge(true)
-      
-      // Initialize realtime sync
-      await sessionSyncService.current.initializeRealtimeSync(bridgeSession.user.id)
-      
-      // Fetch profile
-      const userProfile = await fetchProfile(bridgeSession.user.id)
-      if (userProfile) {
-        setProfile(userProfile)
-      }
-      
-      return bridgeSession
+      // For now, bridge token auth is disabled since it requires Supabase functions
+      // This can be re-implemented with the new backend API later
+      console.warn('[AuthContext] Bridge token auth not yet implemented with new API')
+      return false
     } catch (error) {
       console.error('[AuthContext] Bridge token exchange failed:', error)
-      handleAuthError(error as AuthError)
-      return null
+      handleAuthError(error)
+      return false
     }
-  }, [fetchProfile])
+  }, [])
 
   // Main initialization function
   const initializeAuth = useCallback(async () => {
@@ -176,50 +100,39 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     
     try {
       // Check for bridge token first
-      const bridgeSession = await handleBridgeTokenAuth()
-      if (bridgeSession) {
+      const hasBridgeAuth = await handleBridgeTokenAuth()
+      if (hasBridgeAuth) {
         console.log('[AuthContext] Authenticated via bridge token')
         return
       }
 
-      // Get current session
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession()
-      
-      if (error) {
-        console.error('[AuthContext] Failed to get session:', error)
-        handleAuthError(error)
-        return
-      }
-
-      if (currentSession) {
-        console.log('[AuthContext] Found existing session for user:', currentSession.user.id)
+      // Check if user is already authenticated
+      if (apiClient.isAuthenticated()) {
+        console.log('[AuthContext] Found existing session, fetching user data')
         
-        setSession(currentSession)
-        setUser(currentSession.user)
-        
-        // Mark session as active immediately if it exists
-        sessionStorage.setItem('subtle_session_active', 'true')
-        
-        // Fetch profile
-        const userProfile = await fetchProfile(currentSession.user.id)
-        if (userProfile) {
-          setProfile(userProfile)
-        }
-        
-        // Handle temporary session - but only on browser close, not navigation
-        const isTemporary = sessionStorage.getItem('subtle_session_temporary') === 'true'
-        if (isTemporary) {
-          console.log('[AuthContext] Temporary session detected, will clear on browser close')
+        try {
+          const userData = await apiClient.getCurrentUser()
+          setUserSession(userData)
+          
+          // Mark session as active
+          sessionStorage.setItem('subtle_session_active', 'true')
+          
+          console.log('[AuthContext] Session restored for user:', userData.id)
+        } catch (error) {
+          console.error('[AuthContext] Failed to fetch user data:', error)
+          // Clear invalid tokens
+          await apiClient.logout()
         }
       } else {
         console.log('[AuthContext] No active session found')
       }
     } catch (error) {
       console.error('[AuthContext] Initialization error:', error)
+      handleAuthError(error)
     } finally {
       setLoading(false)
     }
-  }, [fetchProfile, handleBridgeTokenAuth])
+  }, [handleBridgeTokenAuth, setUserSession])
 
   // Initialize auth on mount
   useEffect(() => {
@@ -230,95 +143,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     initializationRef.current = initializeAuth()
-
-    // Subscribe to auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, currentSession: Session | null) => {
-        console.log('[AuthContext] Auth state change:', event, { 
-          hasSession: !!currentSession,
-          userId: currentSession?.user?.id 
+    
+    // Debug: Log all click events to find what's triggering logout
+    const debugClickHandler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.tagName === 'BUTTON' || target.closest('button')) {
+        console.log('[AuthContext] Button clicked:', {
+          text: target.innerText,
+          className: target.className,
+          id: target.id,
+          onclick: target.onclick?.toString()
         })
-
-        switch (event) {
-          case 'SIGNED_IN':
-            setSession(currentSession)
-            setUser(currentSession?.user ?? null)
-            sessionStorage.setItem('subtle_session_active', 'true')
-            
-            if (currentSession?.user) {
-              const userProfile = await fetchProfile(currentSession.user.id)
-              if (userProfile) {
-                setProfile(userProfile)
-              }
-            }
-            break
-
-          case 'SIGNED_OUT':
-            console.log('[AuthContext] User signed out')
-            setSession(null)
-            setUser(null)
-            setProfile(null)
-            setError(null)
-            setIsFromMacAppBridge(false)
-            
-            // Clear all session storage
-            sessionStorage.removeItem('subtle_session_temporary')
-            sessionStorage.removeItem('subtle_session_active')
-            sessionStorage.removeItem('subtle_session_source')
-            sessionStorage.removeItem('subtle_bridge_token_used')
-            
-            // Cleanup session sync service
-            if (sessionSyncService.current) {
-              sessionSyncService.current.cleanup()
-            }
-            break
-
-          case 'USER_UPDATED':
-            setSession(currentSession)
-            setUser(currentSession?.user ?? null)
-            
-            if (currentSession?.user) {
-              const userProfile = await fetchProfile(currentSession.user.id)
-              if (userProfile) {
-                setProfile(userProfile)
-              }
-            }
-            break
-
-          case 'TOKEN_REFRESHED':
-            setSession(currentSession)
-            break
-        }
       }
-    )
-
-    authSubscriptionRef.current = subscription
+    }
+    window.addEventListener('click', debugClickHandler)
 
     // Session refresh interval
     const refreshInterval = setInterval(async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession()
-      if (currentSession?.expires_at) {
-        const expiresAt = new Date(currentSession.expires_at * 1000)
-        const now = new Date()
-        const timeUntilExpiry = expiresAt.getTime() - now.getTime()
-        
-        // Refresh if less than 60 seconds until expiry
-        if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
-          console.log('[AuthContext] Refreshing session - expires soon')
-          await refreshSession()
+      if (apiClient.isAuthenticated()) {
+        try {
+          await apiClient.refreshSession()
+        } catch (error) {
+          console.error('[AuthContext] Session refresh failed:', error)
+          // Don't handle as error here, let the API client handle token refresh
         }
       }
     }, 30000) // Check every 30 seconds
 
-    // Handle browser/tab close for temporary sessions
-    const handleBeforeUnload = () => {
-      const isTemporary = sessionStorage.getItem('subtle_session_temporary') === 'true'
-      if (isTemporary) {
-        // Sign out synchronously on browser close
-        navigator.sendBeacon(`${supabaseUrl}/auth/v1/logout`, JSON.stringify({
-          access_token: session?.access_token
-        }))
-      }
+    // Handle browser/tab close
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       sessionStorage.removeItem('subtle_session_active')
     }
     
@@ -327,40 +180,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Cleanup
     return () => {
       initializationRef.current = null
-      authSubscriptionRef.current?.unsubscribe()
       clearInterval(refreshInterval)
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      
-      if (sessionSyncService.current) {
-        sessionSyncService.current.cleanup()
-      }
+      window.removeEventListener('click', debugClickHandler)
     }
-  }, []) // Empty deps - only run once on mount
+  }, [initializeAuth])
 
   // Auth methods
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
       setError(null)
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      })
+      const response = await apiClient.register(email, password, fullName)
       
-      if (error) {
-        handleAuthError(error)
+      setUserSession(response.user)
+      sessionStorage.setItem('subtle_session_active', 'true')
+      
+      return { error: null }
+    } catch (err: any) {
+      const authError: AuthError = {
+        message: err?.response?.data?.error || err.message || 'Registration failed',
+        code: err?.response?.status?.toString() || 'REGISTRATION_ERROR'
       }
-      
-      return { error }
-    } catch (err) {
-      const error = err as AuthError
-      handleAuthError(error)
-      return { error }
+      handleAuthError(authError)
+      return { error: authError }
     }
   }
 
@@ -368,31 +210,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setError(null)
       
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
+      const response = await apiClient.login(email, password)
       
-      if (error) {
-        handleAuthError(error)
-        return { error }
-      }
-      
-      // Set temporary session flag if remember me is false
-      if (!rememberMe) {
-        sessionStorage.setItem('subtle_session_temporary', 'true')
-      } else {
-        sessionStorage.removeItem('subtle_session_temporary')
-      }
+      setUserSession(response.user)
       
       // Mark session as active immediately after successful login
       sessionStorage.setItem('subtle_session_active', 'true')
       
       return { error: null }
-    } catch (err) {
-      const error = err as AuthError
-      handleAuthError(error)
-      return { error }
+    } catch (err: any) {
+      const authError: AuthError = {
+        message: err?.response?.data?.error || err.message || 'Login failed',
+        code: err?.response?.status?.toString() || 'LOGIN_ERROR'
+      }
+      handleAuthError(authError)
+      return { error: authError }
     }
   }
 
@@ -400,167 +232,157 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setError(null)
       
-      let redirectUrl = `${window.location.origin}/auth/callback`
-      
-      if (options?.desktopAuth && options?.returnUrl) {
-        redirectUrl = `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(options.returnUrl)}&desktopAuth=true`
-      } else if (options?.returnUrl) {
-        redirectUrl = `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(options.returnUrl)}`
+      // Magic link auth not implemented with new API yet
+      const authError: AuthError = {
+        message: 'Magic link authentication is not yet available',
+        code: 'NOT_IMPLEMENTED'
       }
-      
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: redirectUrl
-        }
-      })
-      
-      if (error) {
-        handleAuthError(error)
+      handleAuthError(authError)
+      return { error: authError }
+    } catch (err: any) {
+      const authError: AuthError = {
+        message: err?.response?.data?.error || err.message || 'Magic link failed',
+        code: err?.response?.status?.toString() || 'MAGIC_LINK_ERROR'
       }
-      
-      return { error }
-    } catch (err) {
-      const error = err as AuthError
-      handleAuthError(error)
-      return { error }
+      handleAuthError(authError)
+      return { error: authError }
     }
   }
 
   const signInWithProvider = async (provider: 'google' | 'github' | 'apple') => {
     try {
       setError(null)
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      })
       
-      if (error) {
-        handleAuthError(error)
+      // OAuth provider auth not implemented with new API yet
+      const authError: AuthError = {
+        message: `${provider} authentication is not yet available`,
+        code: 'NOT_IMPLEMENTED'
       }
-      
-      return { error }
-    } catch (err) {
-      const error = err as AuthError
-      handleAuthError(error)
-      return { error }
+      handleAuthError(authError)
+      return { error: authError }
+    } catch (err: any) {
+      const authError: AuthError = {
+        message: err?.response?.data?.error || err.message || 'Provider auth failed',
+        code: err?.response?.status?.toString() || 'PROVIDER_AUTH_ERROR'
+      }
+      handleAuthError(authError)
+      return { error: authError }
     }
   }
 
   const signOut = async () => {
+    console.log('[AuthContext] signOut called - Stack trace:', new Error().stack)
     try {
       setError(null)
       
-      // Cleanup session sync service first
-      if (sessionSyncService.current) {
-        await sessionSyncService.current.cleanup()
+      await apiClient.logout()
+      
+      // Clear state
+      setSession(null)
+      setUser(null)
+      setProfile(null)
+      setError(null)
+      setIsFromMacAppBridge(false)
+      
+      // Clear all session storage
+      sessionStorage.removeItem('subtle_session_active')
+      sessionStorage.removeItem('subtle_session_source')
+      sessionStorage.removeItem('subtle_bridge_token_used')
+      
+      return { error: null }
+    } catch (err: any) {
+      const authError: AuthError = {
+        message: err?.response?.data?.error || err.message || 'Logout failed',
+        code: err?.response?.status?.toString() || 'LOGOUT_ERROR'
       }
-      
-      const { error } = await supabase.auth.signOut()
-      
-      if (error) {
-        handleAuthError(error)
-      }
-      
-      return { error }
-    } catch (err) {
-      const error = err as AuthError
-      handleAuthError(error)
-      return { error }
+      handleAuthError(authError)
+      return { error: authError }
     }
   }
 
   const resetPassword = async (email: string) => {
     try {
       setError(null)
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      })
       
-      if (error) {
-        handleAuthError(error)
+      // Password reset not implemented with new API yet
+      const authError: AuthError = {
+        message: 'Password reset is not yet available',
+        code: 'NOT_IMPLEMENTED'
       }
-      
-      return { error }
-    } catch (err) {
-      const error = err as AuthError
-      handleAuthError(error)
-      return { error }
+      handleAuthError(authError)
+      return { error: authError }
+    } catch (err: any) {
+      const authError: AuthError = {
+        message: err?.response?.data?.error || err.message || 'Password reset failed',
+        code: err?.response?.status?.toString() || 'PASSWORD_RESET_ERROR'
+      }
+      handleAuthError(authError)
+      return { error: authError }
     }
   }
 
   const updatePassword = async (newPassword: string) => {
     try {
       setError(null)
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      })
       
-      if (error) {
-        handleAuthError(error)
+      // Password update not implemented with new API yet
+      const authError: AuthError = {
+        message: 'Password update is not yet available',
+        code: 'NOT_IMPLEMENTED'
       }
-      
-      return { error }
-    } catch (err) {
-      const error = err as AuthError
-      handleAuthError(error)
-      return { error }
+      handleAuthError(authError)
+      return { error: authError }
+    } catch (err: any) {
+      const authError: AuthError = {
+        message: err?.response?.data?.error || err.message || 'Password update failed',
+        code: err?.response?.status?.toString() || 'PASSWORD_UPDATE_ERROR'
+      }
+      handleAuthError(authError)
+      return { error: authError }
     }
   }
 
   const refreshSession = async () => {
     try {
-      const { data, error } = await supabase.auth.refreshSession()
-      if (error) {
-        handleAuthError(error)
-        return { error }
-      }
+      setError(null)
       
-      if (data.session) {
-        setSession(data.session)
-        setUser(data.user)
+      await apiClient.refreshSession()
+      
+      // Fetch updated user data
+      if (apiClient.isAuthenticated()) {
+        const userData = await apiClient.getCurrentUser()
+        setUserSession(userData)
       }
       
       return { error: null }
-    } catch (err) {
-      const error = err as AuthError
-      handleAuthError(error)
-      return { error }
+    } catch (err: any) {
+      const authError: AuthError = {
+        message: err?.response?.data?.error || err.message || 'Session refresh failed',
+        code: err?.response?.status?.toString() || 'REFRESH_ERROR'
+      }
+      handleAuthError(authError)
+      return { error: authError }
     }
   }
 
   const updateProfile = async (updates: Partial<Profile>) => {
-    if (!user) {
-      return { error: new Error('No user logged in') }
-    }
-
     try {
-      const { error } = await supabase
-        .from('users')
-        .update(updates)
-        .eq('id', user.id)
-
-      if (!error && profile) {
-        setProfile({ ...profile, ...updates })
-      }
-
+      setError(null)
+      
+      const updatedUser = await apiClient.updateUserProfile(updates)
+      setUserSession(updatedUser)
+      
+      return { error: null }
+    } catch (err: any) {
+      const error = new Error(err?.response?.data?.error || err.message || 'Profile update failed')
+      console.error('[AuthContext] Profile update error:', error)
       return { error }
-    } catch (error) {
-      return { error: error as Error }
     }
   }
 
   const broadcastSettingsChange = async (settings: Record<string, any>) => {
-    if (sessionSyncService.current && isFromMacAppBridge) {
-      try {
-        await sessionSyncService.current.broadcastSettingsChange(settings)
-        console.log('[AuthContext] Settings change broadcasted to Mac app')
-      } catch (error) {
-        console.error('[AuthContext] Failed to broadcast settings change:', error)
-      }
-    }
+    // Settings broadcast not implemented with new API yet
+    console.log('[AuthContext] Settings broadcast not yet implemented:', settings)
   }
 
   const value: AuthContextType = {
@@ -579,8 +401,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     resetPassword,
     updatePassword,
     refreshSession,
-    broadcastSettingsChange
+    broadcastSettingsChange,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+// Utility functions for bridge token handling (kept for compatibility)
+function getBridgeTokenFromURL(): string | null {
+  const urlParams = new URLSearchParams(window.location.search)
+  return urlParams.get('bridge_token')
+}
+
+function removeBridgeTokenFromURL(): void {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('bridge_token')
+  window.history.replaceState({}, document.title, url.toString())
 }

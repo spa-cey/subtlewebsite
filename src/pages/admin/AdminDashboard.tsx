@@ -22,7 +22,6 @@ import ConfigurationManager from '@/components/admin/config/ConfigurationManager
 import UserManager from '@/components/admin/users/UserManager';
 import Analytics from '@/components/admin/analytics/Analytics';
 import BillingManager from '@/components/admin/billing/BillingManager';
-import { supabase } from '@/lib/supabase';
 
 type AdminModule = 'overview' | 'users' | 'billing' | 'config' | 'analytics' | 'audit' | 'support' | 'content';
 
@@ -107,23 +106,13 @@ const AdminDashboard: React.FC = () => {
       return;
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error || !data) {
-        navigate('/');
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking admin access:', error);
+    // Check if user has admin subscription tier
+    if (user.subscriptionTier !== 'admin') {
       navigate('/');
-    } finally {
-      setLoading(false);
+      return;
     }
+    
+    setLoading(false);
   };
 
   if (loading) {

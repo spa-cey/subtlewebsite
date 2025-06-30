@@ -40,13 +40,13 @@ export const ProfileCard: React.FC = () => {
     }
   };
 
-  const displayName = profile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+  const displayName = profile?.fullName || user.fullName || user.email?.split('@')[0] || 'User';
   const userEmail = user.email || '';
-  const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
-  const joinDate = formatDate(user.created_at);
-  const isEmailVerified = !!user.email_confirmed_at;
-  const userBio = user.user_metadata?.bio;
-  const userLocation = user.user_metadata?.location;
+  const avatarUrl = profile?.avatarUrl || user.avatarUrl;
+  const joinDate = formatDate(user.createdAt);
+  const isEmailVerified = !!user.emailVerified;
+  const userBio = null; // user.user_metadata?.bio;
+  const userLocation = null; // user.user_metadata?.location;
   
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('')
@@ -17,14 +17,15 @@ export default function ResetPassword() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const navigate = useNavigate()
+  const { updatePassword } = useAuth()
 
   useEffect(() => {
-    // Check if we have the necessary auth tokens
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const accessToken = hashParams.get('access_token')
-    const type = hashParams.get('type')
+    // Check if we have a reset token in URL params (our new backend approach)
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    const type = urlParams.get('type')
 
-    if (!accessToken || type !== 'recovery') {
+    if (!token || type !== 'recovery') {
       setError('Invalid or expired reset link. Please request a new one.')
     }
   }, [])
@@ -65,9 +66,7 @@ export default function ResetPassword() {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      })
+      const { error } = await updatePassword(password)
 
       if (error) {
         setError(error.message)

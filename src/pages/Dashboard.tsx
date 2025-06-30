@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import {
   Loader2,
   AlertCircle,
@@ -94,18 +93,10 @@ export default function Dashboard() {
 
       try {
         console.log('[Dashboard] Checking admin status for user:', user.id);
-        const { data, error } = await supabase
-          .from('admins')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-          console.error('[Dashboard] Error checking admin status:', error);
-        }
-
-        setIsAdmin(!!data);
-        console.log('[Dashboard] Admin status:', !!data);
+        // Check if user has admin subscription tier
+        const isUserAdmin = user.subscriptionTier === 'admin';
+        setIsAdmin(isUserAdmin);
+        console.log('[Dashboard] Admin status:', isUserAdmin);
       } catch (err) {
         console.error('[Dashboard] Failed to check admin status:', err);
       } finally {
@@ -117,6 +108,7 @@ export default function Dashboard() {
   }, [user]);
 
   const handleSignOut = async () => {
+    console.log('[Dashboard] handleSignOut called');
     await signOut();
   };
 
@@ -257,12 +249,12 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle>Welcome back!</CardTitle>
                 <CardDescription>
-                  {profile.full_name || profile.email}
+                  {profile.fullName || profile.email}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Member since {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'}
+                  Member since {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Unknown'}
                 </p>
               </CardContent>
             </Card>
@@ -280,7 +272,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <dt className="font-medium">Subscription</dt>
-                    <dd className="text-muted-foreground">{profile.subscription_tier.charAt(0).toUpperCase() + profile.subscription_tier.slice(1)}</dd>
+                    <dd className="text-muted-foreground">{profile.subscriptionTier.charAt(0).toUpperCase() + profile.subscriptionTier.slice(1)}</dd>
                   </div>
                   {isAdmin && (
                     <div>

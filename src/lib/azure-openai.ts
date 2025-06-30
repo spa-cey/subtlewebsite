@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/api';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -58,11 +58,11 @@ export class AzureOpenAIClient {
   private edgeFunctionUrl: string;
 
   constructor() {
-    const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
-    if (!supabaseUrl) {
-      throw new Error('Supabase URL is not configured');
+    const apiUrl = import.meta.env?.VITE_API_URL;
+    if (!apiUrl) {
+      throw new Error('API URL is not configured');
     }
-    this.edgeFunctionUrl = `${supabaseUrl}/functions/v1/ai-request-v3`;
+    this.edgeFunctionUrl = `${apiUrl}/ai/chat-completion`;
   }
 
   async createChatCompletion(options: ChatCompletionOptions): Promise<ChatCompletionResponse> {
@@ -78,15 +78,15 @@ export class AzureOpenAIClient {
       onChunk
     } = options;
 
-    // Get the session token
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // Get the auth token from localStorage (our new auth approach)
+    const token = localStorage.getItem('token');
+    if (!token) {
       throw new Error('User is not authenticated');
     }
 
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
+      'Authorization': `Bearer ${token}`,
     };
 
     const body = {
@@ -197,37 +197,17 @@ export class AzureOpenAIClient {
   }
 
   async getQuotaStatus(): Promise<QuotaInfo> {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const token = localStorage.getItem('token');
+    if (!token) {
       throw new Error('User is not authenticated');
     }
 
     try {
-      // Get user's tier from the users table
-      const { data: profile } = await supabase
-        .from('users')
-        .select('subscription_tier')
-        .eq('id', session.user.id)
-        .single();
-
-      const tier = profile?.subscription_tier || 'free';
-
-      // Get tier quotas
-      const { data: tierQuota } = await supabase
-        .from('tier_definitions')
-        .select('daily_request_limit')
-        .eq('tier', tier)
-        .single();
-
-      // Get current usage
-      const dayAgo = new Date();
-      dayAgo.setDate(dayAgo.getDate() - 1);
-
-      const { count: dailyUsage } = await supabase
-        .from('usage_metrics')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id)
-        .gte('created_at', dayAgo.toISOString());
+      // TODO: Implement quota status via our new API
+      // For now, return mock data to allow the app to build
+      const tier = 'free';
+      const dailyUsage = 0;
+      const dailyLimit = 100;
 
       // Calculate reset date (next day at midnight)
       const resetDate = new Date();
@@ -235,8 +215,8 @@ export class AzureOpenAIClient {
       resetDate.setHours(0, 0, 0, 0);
 
       return {
-        used: dailyUsage || 0,
-        limit: tierQuota?.daily_request_limit || 100,
+        used: dailyUsage,
+        limit: dailyLimit,
         resetDate: resetDate.toISOString(),
       };
     } catch (error) {

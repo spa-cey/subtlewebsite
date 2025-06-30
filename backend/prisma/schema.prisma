@@ -1,0 +1,123 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String    @map("password_hash")
+  fullName         String?   @map("full_name")
+  avatarUrl        String?   @map("avatar_url")
+  subscriptionTier String    @default("free") @map("subscription_tier")
+  emailVerified    Boolean   @default(false) @map("email_verified")
+  lastSignInAt     DateTime? @map("last_sign_in_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relationships
+  sessions         Session[]
+  userActivity     UserActivity[]
+  adminNotesAsUser AdminNote[] @relation("UserNotes")
+  adminNotesAsAdmin AdminNote[] @relation("AdminNotes") 
+  usageMetrics     UserUsageMetric[]
+  billingHistory   BillingHistory[]
+  auditLogsAsUser  AuditLog[] @relation("UserAuditLogs")
+  auditLogsAsAdmin AuditLog[] @relation("AdminAuditLogs")
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  refreshToken String   @unique @map("refresh_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model UserActivity {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  action    String
+  data      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_activity")
+}
+
+model AdminNote {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  adminId   String   @map("admin_id")
+  note      String
+  isFlagged Boolean  @default(false) @map("is_flagged")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user  User @relation("UserNotes", fields: [userId], references: [id], onDelete: Cascade)
+  admin User @relation("AdminNotes", fields: [adminId], references: [id])
+
+  @@map("admin_notes")
+}
+
+model UserUsageMetric {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  requestCount Int      @default(0) @map("request_count")
+  totalTokens  Int      @default(0) @map("total_tokens")
+  totalCost    Decimal  @default(0) @map("total_cost") @db.Decimal(10, 4)
+  featureType  String?  @map("feature_type")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_usage_metrics")
+}
+
+model BillingHistory {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  amount      Decimal  @db.Decimal(10, 2)
+  currency    String   @default("USD") @db.VarChar(3)
+  status      String   @db.VarChar(50)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("billing_history")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  adminId   String   @map("admin_id")
+  userId    String?  @map("user_id")
+  action    String
+  details   Json?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  admin User  @relation("AdminAuditLogs", fields: [adminId], references: [id])
+  user  User? @relation("UserAuditLogs", fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}

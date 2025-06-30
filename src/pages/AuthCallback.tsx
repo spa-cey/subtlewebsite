@@ -1,47 +1,40 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
+  const { refreshSession } = useAuth()
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       console.log('[AuthCallback] Starting auth callback handling')
       console.log('[AuthCallback] Current URL:', window.location.href)
-      console.log('[AuthCallback] Hash fragment:', window.location.hash)
       
       try {
-        // First, check if we have tokens in the URL hash
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const accessToken = hashParams.get('access_token')
-        const refreshToken = hashParams.get('refresh_token')
-        
-        console.log('[AuthCallback] URL tokens found:', {
-          hasAccessToken: !!accessToken,
-          hasRefreshToken: !!refreshToken
-        })
-        
-        const { data, error } = await supabase.auth.getSession()
+        // Check if we have a token in URL params (from magic link or OAuth)
+        const urlParams = new URLSearchParams(window.location.search)
+        const token = urlParams.get('token')
+        const error = urlParams.get('error')
         
         if (error) {
-          console.error('[AuthCallback] Session error:', error)
+          console.error('[AuthCallback] Auth error from URL:', error)
           navigate('/login?error=auth_callback_failed')
           return
         }
 
-        console.log('[AuthCallback] Session status:', {
-          hasSession: !!data.session,
-          userId: data.session?.user?.id,
-          email: data.session?.user?.email
-        })
-
-        if (data.session) {
-          console.log('[AuthCallback] Valid session found, redirecting to dashboard')
+        if (token) {
+          // Store the token and check auth status
+          localStorage.setItem('token', token)
+          console.log('[AuthCallback] Token received, checking auth status')
+          
+          // Let the auth context handle the rest
+          await refreshSession()
           navigate('/dashboard')
         } else {
-          console.log('[AuthCallback] No session found, redirecting to login')
+          // No token found, redirect to login
+          console.log('[AuthCallback] No token found, redirecting to login')
           navigate('/login')
         }
       } catch (error) {
@@ -51,7 +44,7 @@ export default function AuthCallback() {
     }
 
     handleAuthCallback()
-  }, [navigate])
+  }, [navigate, refreshSession])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
