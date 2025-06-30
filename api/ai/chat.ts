@@ -8,7 +8,7 @@ import { decrypt } from '../_lib/encryption';
 
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
-    role: z.string(),
+    role: z.enum(['system', 'user', 'assistant', 'function']),
     content: z.string()
   })),
   model: z.enum(['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini']).optional(),

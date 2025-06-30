@@ -31,6 +31,8 @@ model User {
   billingHistory   BillingHistory[]
   auditLogsAsUser  AuditLog[] @relation("UserAuditLogs")
   auditLogsAsAdmin AuditLog[] @relation("AdminAuditLogs")
+  azureOpenAIConfigs AzureOpenAIConfig[]
+  aiUsage          AIUsage[]
 
   @@map("users")
 }
@@ -139,4 +141,38 @@ model AzureConfig {
   updatedAt        DateTime  @updatedAt @map("updated_at")
   
   @@map("azure_configs")
+}
+
+// User-specific Azure OpenAI configurations
+model AzureOpenAIConfig {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  endpoint       String
+  apiKey         String   @map("api_key") // Encrypted
+  deploymentName String   @map("deployment_name")
+  apiVersion     String   @map("api_version")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("azure_openai_configs")
+}
+
+// AI usage tracking
+model AIUsage {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  model        String
+  inputTokens  Int      @map("input_tokens")
+  outputTokens Int      @map("output_tokens")
+  totalTokens  Int      @map("total_tokens")
+  cost         Decimal  @db.Decimal(10, 6)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_usage")
 }
