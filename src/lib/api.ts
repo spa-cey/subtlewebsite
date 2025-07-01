@@ -37,7 +37,7 @@ class ApiClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || '/api',
+      baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -153,7 +153,7 @@ class ApiClient {
     this.refreshPromise = (async () => {
       try {
         const response = await axios.post(
-          `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
+          `${process.env.NEXT_PUBLIC_API_URL || '/api'}/auth/refresh`,
           { refreshToken }
         )
 

@@ -58,7 +58,7 @@ export class AzureOpenAIClient {
   private edgeFunctionUrl: string;
 
   constructor() {
-    const apiUrl = import.meta.env?.VITE_API_URL;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) {
       throw new Error('API URL is not configured');
     }

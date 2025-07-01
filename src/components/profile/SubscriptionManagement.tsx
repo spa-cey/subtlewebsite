@@ -7,12 +7,14 @@ import { Separator } from '@/components/ui/separator';
 import { QuotaStatus } from '@/components/subscription/QuotaStatus';
 import { PlanUpgrade } from '@/components/subscription/PlanUpgrade';
 import { useBillingHistory } from '@/hooks/useUsers';
-import { useAuth } from '@/contexts/AuthContext';
 import { Crown, CreditCard, Calendar, Receipt, AlertCircle } from 'lucide-react';
 
-export function SubscriptionManagement() {
-  const { user, profile } = useAuth();
-  
+interface SubscriptionManagementProps {
+  user: any;
+  profile: any;
+}
+
+export function SubscriptionManagement({ user, profile }: SubscriptionManagementProps) {
   // Get billing history for current user
   const { data: billingHistory, isLoading: isLoadingBilling } = useBillingHistory(user?.id || '');
 
@@ -20,7 +22,7 @@ export function SubscriptionManagement() {
   const subscriptionTier = profile?.subscriptionTier || user?.subscriptionTier || 'free';
   const billingCycle = null; // user?.user_metadata?.billing_cycle || null;
   const nextBillingDate = null; // user?.user_metadata?.next_billing_date || null;
-  const paymentMethod = null; // user?.user_metadata?.payment_method || null;
+  const paymentMethod: any = null; // user?.user_metadata?.payment_method || null;
 
   // Mock usage data for QuotaStatus - in real app this would come from user context or separate hook
   const mockUsageData = {

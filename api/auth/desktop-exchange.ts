@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
-import { prisma } from '../_lib/prisma';
+import { prisma } from '../_lib/prisma-init';
 import { generateTokens } from '../_lib/auth';
 import { handleCors } from '../_lib/cors';
 import { getAuthCode, deleteAuthCode } from '../_lib/auth-codes';

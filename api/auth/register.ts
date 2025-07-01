@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import bcrypt from 'bcryptjs';
-import { prisma } from '../_lib/prisma';
+import { hash } from '../_lib/bcrypt-compat';
+import { prisma } from '../_lib/prisma-init';
 import { generateTokens } from '../_lib/auth';
 import { handleCors } from '../_lib/cors';
 
@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await hash(password, 12);
 
     // Create user
     const user = await prisma.user.create({

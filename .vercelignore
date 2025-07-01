@@ -1,0 +1,4 @@
+# Ignore Prisma CLI and generated files during build
+node_modules/.prisma/client/libquery_engine-*
+node_modules/.prisma/client/query-engine-*
+node_modules/@prisma/engines

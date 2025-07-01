@@ -10,7 +10,7 @@ interface LogData {
 }
 
 class ServerLogger {
-  private isDev = import.meta.env.DEV;
+  private isDev = process.env.NODE_ENV === 'development';
 
   private async sendToServer(logData: LogData) {
     if (!this.isDev) return;

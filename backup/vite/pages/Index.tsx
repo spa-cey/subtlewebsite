@@ -6,12 +6,10 @@ import { HeroSection } from '@/components/landing/HeroSection';
 import { SubtleFeaturesSection } from '@/components/landing/SubtleFeaturesSection';
 import { SubtleDemoSection } from '@/components/landing/SubtleDemoSection';
 import { SubtleUseCasesSection } from '@/components/landing/SubtleUseCasesSection';
-import { SubtleArchitectureSection } from '@/components/landing/SubtleArchitectureSection';
 import { SubtleInstallSection } from '@/components/landing/SubtleInstallSection';
 import { SubtlePricingSection } from '@/components/landing/SubtlePricingSection';
 import { TestimonialsSection } from '@/components/landing/TestimonialsSection';
 import { SubtleCommunitySection } from '@/components/landing/SubtleCommunitySection';
-import { SubtleRoadmapSection } from '@/components/landing/SubtleRoadmapSection';
 import { SubtleFAQSection } from '@/components/landing/SubtleFAQSection';
 import { CallToAction } from '@/components/landing/CallToAction';
 import { LoadingScreen } from '@/components/landing/LoadingScreen';
@@ -24,12 +22,10 @@ const Index = () => {
   const showFeatures = useAnimateIn(false, 600);
   const showDemo = useAnimateIn(false, 900);
   const showUseCases = useAnimateIn(false, 1200);
-  const showArchitecture = useAnimateIn(false, 1500);
   const showInstall = useAnimateIn(false, 1800);
   const showPricing = useAnimateIn(false, 2100);
   const showTestimonials = useAnimateIn(false, 2400);
   const showCommunity = useAnimateIn(false, 2700);
-  const showRoadmap = useAnimateIn(false, 3000);
   const showFAQ = useAnimateIn(false, 3300);
   const showCallToAction = useAnimateIn(false, 3600);
   
@@ -68,8 +64,6 @@ const Index = () => {
           {/* Use Cases Section */}
           <SubtleUseCasesSection show={showUseCases} />
           
-          {/* Architecture Section */}
-          <SubtleArchitectureSection show={showArchitecture} />
           
           {/* Installation Section */}
           <SubtleInstallSection show={showInstall} />
@@ -83,8 +77,6 @@ const Index = () => {
           {/* Community Section */}
           <SubtleCommunitySection show={showCommunity} />
           
-          {/* Roadmap Section */}
-          <SubtleRoadmapSection show={showRoadmap} />
           
           {/* FAQ Section */}
           <SubtleFAQSection show={showFAQ} />

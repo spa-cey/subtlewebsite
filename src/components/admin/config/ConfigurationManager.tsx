@@ -24,6 +24,7 @@ interface AzureConfig {
   name: string;
   endpoint: string;
   api_version: string;
+  deployment_name: string;
   is_active: boolean;
   is_primary: boolean;
   rate_limit_rpm: number;
@@ -57,6 +58,7 @@ const ConfigurationManager: React.FC = () => {
         name: config.name,
         endpoint: config.endpoint,
         api_version: config.apiVersion,
+        deployment_name: config.deploymentName || '',
         is_active: config.isActive,
         is_primary: config.isPrimary,
         rate_limit_rpm: config.rateLimitRpm,
@@ -87,7 +89,7 @@ const ConfigurationManager: React.FC = () => {
 
       const toastDescription = result.success 
         ? `Configuration tested successfully. Response time: ${result.responseTime}ms`
-        : result.details?.error?.reason || `Configuration test failed. Status: ${result.healthStatus}`;
+        : `Configuration test failed. Status: ${result.healthStatus}`;
       
       toast({
         title: result.success ? 'Test Successful' : 'Test Failed',

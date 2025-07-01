@@ -164,29 +164,25 @@ const Analytics: React.FC = () => {
           title="Total Users"
           value={stats?.users?.total?.toLocaleString() || '0'}
           icon={Users}
-          change={15.3}
-          changeLabel="vs last period"
+          trend={{ value: 15.3, isPositive: true }}
         />
         <MetricCard
           title="Active Users"
           value={stats?.users?.active?.toLocaleString() || '0'}
           icon={Activity}
-          change={8.2}
-          changeLabel="vs last period"
+          trend={{ value: 8.2, isPositive: true }}
         />
         <MetricCard
           title="Revenue"
           value={`$${((stats?.revenue?.mrr || 0) / 100).toFixed(2)}`}
           icon={DollarSign}
-          change={12.5}
-          changeLabel="MRR growth"
+          trend={{ value: 12.5, isPositive: true }}
         />
         <MetricCard
           title="API Requests"
           value="45.2K"
           icon={Globe}
-          change={-2.4}
-          changeLabel="vs last period"
+          trend={{ value: 2.4, isPositive: false }}
         />
       </div>
 

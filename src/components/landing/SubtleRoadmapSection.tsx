@@ -6,12 +6,7 @@ import {
   Rocket, 
   Sparkles,
   Cloud,
-  Globe,
-  Cpu,
-  Users,
-  Lock,
-  FileText,
-  Zap
+  Globe
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
@@ -76,13 +71,6 @@ export const SubtleRoadmapSection = ({ show }: RoadmapSectionProps) => {
     }
   ];
 
-  const upcomingFeatures = [
-    { icon: <Cpu />, name: "GPU acceleration for faster processing" },
-    { icon: <Users />, name: "Shared knowledge bases for teams" },
-    { icon: <Lock />, name: "End-to-end encryption for cloud features" },
-    { icon: <FileText />, name: "Advanced document analysis" },
-    { icon: <Zap />, name: "Plugin system for extensibility" }
-  ];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -175,39 +163,6 @@ export const SubtleRoadmapSection = ({ show }: RoadmapSectionProps) => {
           ))}
         </div>
 
-        {/* Future Vision */}
-        <Card className="glass-panel p-8 max-w-4xl mx-auto">
-          <h3 className="text-2xl font-semibold mb-6 text-center">Coming Soon</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {upcomingFeatures.map((feature, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 rounded-lg glass-light">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  {feature.icon}
-                </div>
-                <span className="text-sm">{feature.name}</span>
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-8 text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              Help shape the future of Subtle
-            </p>
-            <div className="flex gap-4 justify-center">
-              <a href="#" className="text-primary hover:underline text-sm">
-                Request features
-              </a>
-              <span className="text-muted-foreground">•</span>
-              <a href="#" className="text-primary hover:underline text-sm">
-                Join our community
-              </a>
-              <span className="text-muted-foreground">•</span>
-              <a href="#" className="text-primary hover:underline text-sm">
-                Give feedback
-              </a>
-            </div>
-          </div>
-        </Card>
       </div>
     </AnimatedTransition>
   );

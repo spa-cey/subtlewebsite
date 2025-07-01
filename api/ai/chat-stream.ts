@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { OpenAI } from 'openai';
 import { z } from 'zod';
-import { prisma } from '../_lib/prisma';
+import { prisma } from '../_lib/prisma-init';
 import { AuthenticatedRequest, authenticateToken } from '../_lib/auth';
 import { handleCors } from '../_lib/cors';
 import { decrypt } from '../_lib/encryption';

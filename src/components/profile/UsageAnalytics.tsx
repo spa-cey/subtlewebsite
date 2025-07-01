@@ -6,19 +6,21 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, Activity, DollarSign, Zap, Clock, TrendingUp, BarChart3 } from 'lucide-react'
 import { useUserUsageAnalytics } from '@/hooks/useUsers'
-import { useAuth } from '@/contexts/AuthContext'
 
 type TimeRange = 'daily' | 'weekly' | 'monthly'
 
-const UsageAnalytics = () => {
-  const { user } = useAuth()
+interface UsageAnalyticsProps {
+  userId: string;
+}
+
+const UsageAnalytics = ({ userId }: UsageAnalyticsProps) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('weekly')
   
   const { 
     data: activityData, 
     isLoading, 
     error 
-  } = useUserUsageAnalytics(user?.id || '', timeRange)
+  } = useUserUsageAnalytics(userId, timeRange)
 
   if (isLoading) {
     return (
@@ -207,8 +209,8 @@ const UsageAnalytics = () => {
           {dailyUsage.length > 0 ? (
             <div className="space-y-4">
               <div className="h-64 w-full flex items-end justify-between gap-2">
-                {dailyUsage.slice(-14).map((day, index) => {
-                  const maxRequests = Math.max(...dailyUsage.map(d => (d as any).requests || 0))
+                {dailyUsage.slice(-14).map((day: any, index: number) => {
+                  const maxRequests = Math.max(...dailyUsage.map((d: any) => (d as any).requests || 0))
                   const height = maxRequests > 0 ? (((day as any).requests || 0) / maxRequests) * 200 : 0
                   
                   return (
@@ -295,7 +297,7 @@ const UsageAnalytics = () => {
           <CardContent>
             {recentActivity.length > 0 ? (
               <div className="space-y-4">
-                {recentActivity.slice(0, 10).map((activity, index) => (
+                {recentActivity.slice(0, 10).map((activity: any, index: number) => (
                   <div key={index} className="flex items-start space-x-3">
                     <div className="flex-shrink-0">
                       <div className="w-2 h-2 bg-primary rounded-full mt-2" />

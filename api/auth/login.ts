@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import bcrypt from 'bcryptjs';
-import { prisma } from '../_lib/prisma';
+import { compare } from '../_lib/bcrypt-compat';
+import { prisma } from '../_lib/prisma-init';
 import { generateTokens } from '../_lib/auth';
 import { handleCors } from '../_lib/cors';
 
@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Check password
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    const isValidPassword = await compare(password, user.passwordHash);
 
     if (!isValidPassword) {
       return res.status(401).json({

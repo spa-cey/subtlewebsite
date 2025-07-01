@@ -40,7 +40,7 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, isOpen, onClo
       const usageData = data.usage || [];
 
       // Group by day for charts
-      const groupedData = (usageData || []).reduce((acc, record) => {
+      const groupedData = (usageData || []).reduce((acc: any, record: any) => {
         const date = new Date(record.created_at).toLocaleDateString();
         if (!acc[date]) {
           acc[date] = {

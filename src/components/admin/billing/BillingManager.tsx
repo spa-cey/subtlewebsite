@@ -130,28 +130,24 @@ const BillingManager: React.FC = () => {
           title="Monthly Recurring Revenue"
           value={formatCurrency(billingData.mrr)}
           icon={DollarSign}
-          change={12.5}
-          changeLabel="vs last month"
+          trend={{ value: 12.5, isPositive: true }}
         />
         <MetricCard
           title="Total Revenue"
           value={formatCurrency(billingData.revenue)}
           icon={TrendingUp}
-          change={8.3}
-          changeLabel="growth"
+          trend={{ value: 8.3, isPositive: true }}
         />
         <MetricCard
           title="Profit Margin"
           value={`${billingData.margin.toFixed(1)}%`}
           icon={BarChart3}
-          change={2.1}
-          changeLabel="improvement"
+          trend={{ value: 2.1, isPositive: true }}
         />
         <MetricCard
           title="Customer Lifetime Value"
           value={formatCurrency(billingData.ltv)}
           icon={Users}
-          subtitle={`CAC: ${formatCurrency(billingData.cac)}`}
         />
       </div>
 

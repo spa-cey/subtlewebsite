@@ -270,7 +270,7 @@ export function SecuritySettings({ userId }: SecuritySettingsProps) {
               <div className="pt-4 border-t">
                 <h4 className="font-medium mb-2">Recent Sync Activity</h4>
                 <div className="space-y-2">
-                  {sessionSyncLogs.slice(0, 3).map((log, index) => (
+                  {(sessionSyncLogs as any[]).slice(0, 3).map((log, index) => (
                     <div key={index} className="text-sm text-muted-foreground flex items-center gap-2">
                       <CheckCircle className="h-3 w-3 text-green-600" />
                       {log.action} • {formatLastActive(log.timestamp)}

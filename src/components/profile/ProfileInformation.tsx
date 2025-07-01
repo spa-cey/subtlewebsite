@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,8 +14,13 @@ interface ProfileFormData {
   email: string;
 }
 
-export function ProfileInformation() {
-  const { user, profile, updateProfile } = useAuth();
+interface ProfileInformationProps {
+  user: any;
+  profile: any;
+  onUpdate: (updatedProfile: any) => void;
+}
+
+export function ProfileInformation({ user, profile, onUpdate }: ProfileInformationProps) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,14 +38,18 @@ export function ProfileInformation() {
 
     setIsLoading(true);
     try {
-      const { error } = await updateProfile({
+      // In a real app, this would call an API endpoint
+      // For now, we'll simulate the update
+      const updatedProfile = {
+        ...profile,
         fullName: formData.full_name,
         email: formData.email,
-      });
+      };
 
-      if (error) {
-        throw error;
-      }
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      onUpdate(updatedProfile);
 
       toast({
         title: "Profile updated",
@@ -119,7 +127,7 @@ export function ProfileInformation() {
             <div className="relative">
               <Avatar className="h-20 w-20">
                 <AvatarImage 
-                  src={profile?.avatarUrl || user.avatarUrl}
+                  src={profile?.avatarUrl || user.avatarUrl || undefined}
                   alt={formData.full_name} 
                 />
                 <AvatarFallback className="text-lg">

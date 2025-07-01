@@ -79,13 +79,13 @@ export const SubtleFeaturesSection = ({ show }: FeatureSectionProps) => {
         content: (
           <div className="space-y-4">
             <div className="bg-background/50 rounded-lg p-4 font-mono text-sm">
-              <div className="text-primary mb-2">// Vision Framework OCR</div>
+              <div className="text-primary mb-2">{"// Vision Framework OCR"}</div>
               <div className="text-muted-foreground">
                 let request = VNRecognizeTextRequest()<br/>
                 request.recognitionLevel = .accurate<br/>
                 request.usesLanguageCorrection = true<br/>
                 <br/>
-                <span className="text-green-500">// Processing: 150ms avg</span>
+                <span className="text-green-500">{"// Processing: 150ms avg"}</span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

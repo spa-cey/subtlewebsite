@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../_lib/prisma';
+import { prisma } from '../_lib/prisma-init';
 import { generateTokens } from '../_lib/auth';
 import { handleCors } from '../_lib/cors';
 

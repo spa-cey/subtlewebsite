@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
-import { prisma } from './prisma';
+import { prisma } from './prisma-init';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 

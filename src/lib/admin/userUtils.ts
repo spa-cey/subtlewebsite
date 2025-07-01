@@ -70,6 +70,7 @@ export const formatSubscriptionTier = (tier: SubscriptionTier): string => {
     basic: 'Basic',
     pro: 'Pro',
     enterprise: 'Enterprise',
+    custom: 'Custom',
   };
   return tierMap[tier];
 };
@@ -100,6 +101,7 @@ export const getSubscriptionColor = (tier: SubscriptionTier): string => {
     basic: 'bg-blue-100 text-blue-700',
     pro: 'bg-purple-100 text-purple-700',
     enterprise: 'bg-orange-100 text-orange-700',
+    custom: 'bg-indigo-100 text-indigo-700',
   };
   return colorMap[tier];
 };

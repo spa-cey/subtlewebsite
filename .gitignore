@@ -31,3 +31,6 @@ migration/data-export/exports/
 # Environment variables
 .env.local
 .netlify
+
+# Next.js build output
+.next

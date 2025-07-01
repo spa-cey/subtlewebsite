@@ -18,7 +18,7 @@ export interface User {
 
 export type UserRole = 'user' | 'support' | 'admin' | 'super_admin';
 export type UserStatus = 'active' | 'suspended' | 'deleted';
-export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'enterprise';
+export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'enterprise' | 'custom';
 
 export interface UserFilters {
   search: string;

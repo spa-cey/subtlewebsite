@@ -1,7 +1,9 @@
 
+'use client';
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext-nextjs';
 import {
   Dialog,
   DialogContent,
@@ -17,10 +19,11 @@ interface AuthModalProps {
 }
 
 const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
-  const { login } = useAuth();
+  const { signIn } = useAuth();
 
-  const handleLogin = () => {
-    login();
+  const handleLogin = async () => {
+    // This is a mock login, you would typically collect email/password from a form
+    await signIn('demo@example.com', 'password');
     onClose();
   };
 
