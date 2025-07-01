@@ -20,9 +20,16 @@ import {
   Key,
   RefreshCw,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Cloud,
+  Plus,
+  XCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import AzureConfigList from '@/components/admin/azure/AzureConfigList';
+import AzureConfigForm from '@/components/admin/azure/AzureConfigForm';
+import axios from 'axios';
+import { cn } from '@/lib/utils';
 
 interface SystemConfig {
   general: {
@@ -52,11 +59,22 @@ interface SystemConfig {
   };
 }
 
+interface SystemStatus {
+  database: { status: string; message: string };
+  email: { status: string; message: string };
+  apiKeys: { status: string; message: string; azureConfigs: number; activeConfigs: number };
+}
+
 export default function ConfigurationManager() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+  const [azureConfigs, setAzureConfigs] = useState<any[]>([]);
+  const [showAzureForm, setShowAzureForm] = useState(false);
+  const [editingAzureConfig, setEditingAzureConfig] = useState<any>(null);
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
   
   const [config, setConfig] = useState<SystemConfig>({
     general: {
@@ -85,6 +103,44 @@ export default function ConfigurationManager() {
       lowBalanceAlert: true,
     }
   });
+
+  useEffect(() => {
+    if (activeTab === 'azure') {
+      fetchAzureConfigs();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    fetchSystemStatus();
+  }, []);
+
+  const fetchAzureConfigs = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/admin/config/azure');
+      setAzureConfigs(response.data.data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch Azure configurations',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSystemStatus = async () => {
+    setLoadingStatus(true);
+    try {
+      const response = await axios.get('/api/admin/system-status');
+      setSystemStatus(response.data.data);
+    } catch (error) {
+      console.error('Failed to fetch system status:', error);
+    } finally {
+      setLoadingStatus(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -120,24 +176,26 @@ export default function ConfigurationManager() {
             Manage application settings and configurations
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </>
-          )}
-        </Button>
+        {activeTab !== 'azure' && (
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Configuration Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full max-w-[600px]">
+        <TabsList className="grid grid-cols-5 w-full max-w-[800px]">
           <TabsTrigger value="general">
             <Globe className="h-4 w-4 mr-2" />
             General
@@ -153,6 +211,10 @@ export default function ConfigurationManager() {
           <TabsTrigger value="notifications">
             <Bell className="h-4 w-4 mr-2" />
             Notifications
+          </TabsTrigger>
+          <TabsTrigger value="azure">
+            <Cloud className="h-4 w-4 mr-2" />
+            Azure AI
           </TabsTrigger>
         </TabsList>
 
@@ -421,48 +483,173 @@ export default function ConfigurationManager() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Azure OpenAI Settings */}
+        <TabsContent value="azure" className="space-y-4">
+          {showAzureForm ? (
+            <AzureConfigForm
+              config={editingAzureConfig}
+              onSave={() => {
+                setShowAzureForm(false);
+                setEditingAzureConfig(null);
+                fetchAzureConfigs();
+              }}
+              onCancel={() => {
+                setShowAzureForm(false);
+                setEditingAzureConfig(null);
+              }}
+            />
+          ) : (
+            <>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-medium">Azure OpenAI Configurations</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Manage your Azure OpenAI deployments and API configurations
+                  </p>
+                </div>
+                <Button
+                  onClick={() => {
+                    setEditingAzureConfig(null);
+                    setShowAzureForm(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Configuration
+                </Button>
+              </div>
+
+              {loading ? (
+                <Card>
+                  <CardContent className="flex items-center justify-center py-12">
+                    <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              ) : (
+                <AzureConfigList
+                  configs={azureConfigs}
+                  onEdit={(config) => {
+                    setEditingAzureConfig(config);
+                    setShowAzureForm(true);
+                  }}
+                  onRefresh={fetchAzureConfigs}
+                />
+              )}
+            </>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* System Status */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>System Status</CardTitle>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              fetchSystemStatus();
+              if (activeTab === 'azure') {
+                fetchAzureConfigs();
+              }
+            }}
+            disabled={loadingStatus}
+          >
+            <RefreshCw className={cn("h-4 w-4", loadingStatus && "animate-spin")} />
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="flex items-center gap-3">
-              <Database className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="font-medium">Database</p>
-                <div className="flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3 text-green-500" />
-                  <span className="text-sm text-green-500">Connected</span>
+          {loadingStatus ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : systemStatus ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="flex items-center gap-3">
+                <Database className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Database</p>
+                  <div className="flex items-center gap-1">
+                    {systemStatus.database.status === 'healthy' ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 text-green-500" />
+                        <span className="text-sm text-green-500">{systemStatus.database.message}</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-3 w-3 text-red-500" />
+                        <span className="text-sm text-red-500">{systemStatus.database.message}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <Mail className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Email Service</p>
+                  <div className="flex items-center gap-1">
+                    {systemStatus.email.status === 'healthy' ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 text-green-500" />
+                        <span className="text-sm text-green-500">{systemStatus.email.message}</span>
+                      </>
+                    ) : systemStatus.email.status === 'degraded' ? (
+                      <>
+                        <AlertCircle className="h-3 w-3 text-yellow-500" />
+                        <span className="text-sm text-yellow-500">{systemStatus.email.message}</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-3 w-3 text-gray-400" />
+                        <span className="text-sm text-gray-400">{systemStatus.email.message}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <Cloud className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Azure OpenAI</p>
+                  <div className="flex items-center gap-1">
+                    {systemStatus.apiKeys.status === 'healthy' ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 text-green-500" />
+                        <span className="text-sm text-green-500">{systemStatus.apiKeys.message}</span>
+                      </>
+                    ) : systemStatus.apiKeys.status === 'degraded' ? (
+                      <>
+                        <AlertCircle className="h-3 w-3 text-yellow-500" />
+                        <span className="text-sm text-yellow-500">{systemStatus.apiKeys.message}</span>
+                      </>
+                    ) : systemStatus.apiKeys.status === 'unconfigured' ? (
+                      <>
+                        <AlertCircle className="h-3 w-3 text-gray-400" />
+                        <span className="text-sm text-gray-400">{systemStatus.apiKeys.message}</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-3 w-3 text-red-500" />
+                        <span className="text-sm text-red-500">{systemStatus.apiKeys.message}</span>
+                      </>
+                    )}
+                  </div>
+                  {systemStatus.apiKeys.azureConfigs > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {systemStatus.apiKeys.azureConfigs} total, {systemStatus.apiKeys.activeConfigs} active
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
-            
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="font-medium">Email Service</p>
-                <div className="flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3 text-green-500" />
-                  <span className="text-sm text-green-500">Configured</span>
-                </div>
-              </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Failed to load system status
             </div>
-            
-            <div className="flex items-center gap-3">
-              <Key className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="font-medium">API Keys</p>
-                <div className="flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3 text-yellow-500" />
-                  <span className="text-sm text-yellow-500">Check Required</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -47,10 +47,10 @@ export const exportUsersToCSV = (users: User[]) => {
 // Format Functions
 export const formatUserRole = (role: UserRole): string => {
   const roleMap: Record<UserRole, string> = {
-    user: 'User',
-    support: 'Support',
+    free: 'Free',
+    pro: 'Pro',
+    enterprise: 'Enterprise',
     admin: 'Admin',
-    super_admin: 'Super Admin',
   };
   return roleMap[role];
 };
@@ -67,10 +67,9 @@ export const formatUserStatus = (status: UserStatus): string => {
 export const formatSubscriptionTier = (tier: SubscriptionTier): string => {
   const tierMap: Record<SubscriptionTier, string> = {
     free: 'Free',
-    basic: 'Basic',
     pro: 'Pro',
     enterprise: 'Enterprise',
-    custom: 'Custom',
+    admin: 'Admin',
   };
   return tierMap[tier];
 };
@@ -78,10 +77,10 @@ export const formatSubscriptionTier = (tier: SubscriptionTier): string => {
 // Color Functions
 export const getRoleColor = (role: UserRole): string => {
   const colorMap: Record<UserRole, string> = {
-    user: 'bg-gray-100 text-gray-700',
-    support: 'bg-blue-100 text-blue-700',
-    admin: 'bg-purple-100 text-purple-700',
-    super_admin: 'bg-red-100 text-red-700',
+    free: 'bg-gray-100 text-gray-700',
+    pro: 'bg-green-100 text-green-700',
+    enterprise: 'bg-purple-100 text-purple-700',
+    admin: 'bg-blue-100 text-blue-700',
   };
   return colorMap[role];
 };
@@ -98,10 +97,9 @@ export const getStatusColor = (status: UserStatus): string => {
 export const getSubscriptionColor = (tier: SubscriptionTier): string => {
   const colorMap: Record<SubscriptionTier, string> = {
     free: 'bg-gray-100 text-gray-700',
-    basic: 'bg-blue-100 text-blue-700',
-    pro: 'bg-purple-100 text-purple-700',
-    enterprise: 'bg-orange-100 text-orange-700',
-    custom: 'bg-indigo-100 text-indigo-700',
+    pro: 'bg-green-100 text-green-700',
+    enterprise: 'bg-purple-100 text-purple-700',
+    admin: 'bg-blue-100 text-blue-700',
   };
   return colorMap[tier];
 };

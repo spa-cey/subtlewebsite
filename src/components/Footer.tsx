@@ -24,10 +24,10 @@ export const Footer = () => {
       { label: 'Security', href: '#' },
     ],
     support: [
-      { label: 'Help Center', href: '#' },
-      { label: 'Discord Community', href: '#', external: true },
-      { label: 'Email Support', href: 'mailto:support@subtle.app' },
-      { label: 'FAQ', href: '#' },
+      { label: 'Help Center', href: '/support' },
+      { label: 'Discord Community', href: 'https://discord.gg/subtle', external: true },
+      { label: 'Email Support', href: 'mailto:support@gosubtle.app' },
+      { label: 'FAQ', href: '/support#faq' },
     ],
   };
 

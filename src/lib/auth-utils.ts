@@ -26,13 +26,15 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 
 export function generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
   console.log('Generating JWT with secret:', JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'UNDEFINED');
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '15m' });
+  // Extended to 7 days for better UX - Mac app users won't need to re-login frequently
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
   console.log('Generated token length:', token.length);
   return token;
 }
 
 export function generateRefreshToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+  // Extended to 30 days for long-term session persistence
+  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '30d' });
 }
 
 export async function verifyJWT(token: string): Promise<JWTPayload> {
@@ -89,7 +91,7 @@ export async function setAuthCookies(accessToken: string, refreshToken: string) 
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: 7 * 24 * 60 * 60, // 7 days - matches JWT expiration
     path: '/',
   });
 
@@ -97,7 +99,7 @@ export async function setAuthCookies(accessToken: string, refreshToken: string) 
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 30 * 24 * 60 * 60, // 30 days - matches JWT refresh token expiration
     path: '/',
   });
 }

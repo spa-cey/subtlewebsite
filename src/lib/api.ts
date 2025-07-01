@@ -41,7 +41,7 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 10000,
+      timeout: 30000, // Increased to 30 seconds for image analysis
     })
 
     this.setupInterceptors()
@@ -381,8 +381,11 @@ class ApiClient {
       updatedAt: string
     }>
   }> {
-    const response = await this.client.get('/admin/configs')
-    return response.data
+    const response = await this.client.get('/admin/config/azure')
+    // Transform the API response to match the expected format
+    return {
+      configs: response.data.data || response.data.configs || []
+    }
   }
 
   async getAzureConfig(id: string): Promise<{
@@ -403,7 +406,7 @@ class ApiClient {
       updatedAt: string
     }
   }> {
-    const response = await this.client.get(`/admin/configs/${id}`)
+    const response = await this.client.get(`/admin/config/azure/${id}`)
     return response.data
   }
 
@@ -418,7 +421,7 @@ class ApiClient {
     rateLimitRpm?: number
     rateLimitTpd?: number
   }): Promise<{ config: any }> {
-    const response = await this.client.post('/admin/configs', data)
+    const response = await this.client.post('/admin/config/azure', data)
     return response.data
   }
 
@@ -433,12 +436,12 @@ class ApiClient {
     rateLimitRpm?: number
     rateLimitTpd?: number
   }): Promise<{ config: any }> {
-    const response = await this.client.patch(`/admin/configs/${id}`, data)
+    const response = await this.client.patch(`/admin/config/azure/${id}`, data)
     return response.data
   }
 
   async deleteAzureConfig(id: string): Promise<{ message: string; deletedConfig: { id: string; name: string } }> {
-    const response = await this.client.delete(`/admin/configs/${id}`)
+    const response = await this.client.delete(`/admin/config/azure/${id}`)
     return response.data
   }
 
@@ -448,7 +451,61 @@ class ApiClient {
     responseTime: number
     timestamp: string
   }> {
-    const response = await this.client.post(`/admin/configs/${id}/test`)
+    const response = await this.client.post(`/admin/config/azure/test`, { configId: id })
+    return response.data
+  }
+
+  // AI Chat
+  async chat(messages: Array<{
+    role: 'system' | 'user' | 'assistant' | 'function'
+    content: string
+  }>, options?: {
+    model?: 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo' | 'gpt-4o' | 'gpt-4o-mini'
+    temperature?: number
+    max_tokens?: number
+    stream?: boolean
+  }): Promise<{
+    success: boolean
+    response?: string
+    usage?: {
+      prompt_tokens: number
+      completion_tokens: number
+      total_tokens: number
+    }
+    cost?: number
+    error?: string
+  }> {
+    const response = await this.client.post('/ai/chat', {
+      messages,
+      model: options?.model || 'gpt-4o-mini',
+      temperature: options?.temperature || 0.7,
+      max_tokens: options?.max_tokens,
+      stream: options?.stream || false
+    })
+    return response.data
+  }
+
+  // AI Image Analysis
+  async analyzeImage(image: string, prompt?: string, analysisType?: string): Promise<{
+    success: boolean
+    analysis?: string
+    usage?: {
+      prompt_tokens: number
+      completion_tokens: number
+      total_tokens: number
+    }
+    cost?: number
+    error?: string
+  }> {
+    const response = await this.client.post('/ai/analyze-image', {
+      image, // Next.js endpoint expects 'image' not 'images'
+      prompt: prompt || 'What is in this image?',
+      analysisType: analysisType || 'general'
+    }, {
+      timeout: 45000 // 45 seconds for image analysis specifically
+    })
+    
+    // Next.js endpoint returns correct format
     return response.data
   }
 

@@ -60,6 +60,15 @@ export async function POST(request: NextRequest) {
       role: user.role,
     });
 
+    // Store refresh token in database for session tracking
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        refreshToken: refreshToken,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      },
+    });
+
     // Create response with user data
     const response = NextResponse.json(
       {
@@ -78,7 +87,7 @@ export async function POST(request: NextRequest) {
         tokens: {
           accessToken,
           refreshToken,
-          expiresIn: 900, // 15 minutes in seconds
+          expiresIn: 7 * 24 * 60 * 60, // 7 days in seconds
         },
       },
       { status: 201 }
@@ -89,7 +98,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 15 * 60, // 15 minutes
+      maxAge: 7 * 24 * 60 * 60, // 7 days to match token expiration
       path: '/',
     });
 
@@ -97,7 +106,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 30 * 24 * 60 * 60, // 30 days to match token expiration
       path: '/',
     });
 

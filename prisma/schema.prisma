@@ -34,6 +34,7 @@ model User {
   auditLogsAsAdmin AuditLog[] @relation("AdminAuditLogs")
   azureOpenAIConfigs AzureOpenAIConfig[]
   aiUsage          AIUsage[]
+  bridgeTokens     BridgeToken[]
 
   @@map("users")
 }
@@ -44,6 +45,7 @@ model Session {
   refreshToken String   @unique @map("refresh_token")
   expiresAt    DateTime @map("expires_at")
   createdAt    DateTime @default(now()) @map("created_at")
+  invalidatedAt DateTime? @map("invalidated_at") // Track when session was invalidated
 
   // Relationships
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -176,4 +178,49 @@ model AIUsage {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ai_usage")
+}
+
+// System-wide Azure OpenAI configurations
+model SystemAzureConfig {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  endpoint        String
+  apiKey          String   @map("api_key") // Encrypted
+  deploymentName  String   @map("deployment_name")
+  modelName       String   @map("model_name")
+  apiVersion      String   @default("2024-04-01-preview") @map("api_version")
+  isPrimary       Boolean  @default(false) @map("is_primary")
+  isActive        Boolean  @default(true) @map("is_active")
+  maxTokens       Int?     @map("max_tokens")
+  temperature     Float?   @default(0.7)
+  rateLimitRpm    Int?     @map("rate_limit_rpm") // Requests per minute
+  rateLimitTpd    Int?     @map("rate_limit_tpd") // Tokens per day
+  lastHealthCheck DateTime? @map("last_health_check")
+  healthStatus    String?   @map("health_status") // healthy, degraded, unhealthy
+  metadata        Json?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@map("system_azure_configs")
+}
+
+// Bridge tokens for seamless Mac app to Web authentication
+model BridgeToken {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  userId       String    @map("user_id")
+  accessToken  String    @map("access_token")
+  refreshToken String    @map("refresh_token")
+  deviceInfo   Json?     @map("device_info")
+  ipAddress    String?   @map("ip_address")
+  userAgent    String?   @map("user_agent")
+  expiresAt    DateTime  @map("expires_at")
+  usedAt       DateTime? @map("used_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("bridge_tokens")
 }

@@ -26,9 +26,11 @@ const publicPaths = [
   '/signup',
   '/forgot-password',
   '/reset-password',
+  '/dashboard/bridge-auth',
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/refresh',
+  '/api/auth/bridge-token/exchange',
   '/api/auth/desktop-initiate',
   '/api/auth/desktop-exchange',
 ];
@@ -95,7 +97,7 @@ export async function middleware(request: NextRequest) {
           },
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Token verification failed for path:', path);
       console.error('Error details:', error);
       
@@ -103,6 +105,26 @@ export async function middleware(request: NextRequest) {
       if (path === '/login') {
         console.log('Already on login page, preventing redirect loop');
         return NextResponse.next();
+      }
+      
+      // Check if token is expired and we have a refresh token
+      if (error?.message === 'Token expired') {
+        const refreshToken = request.cookies.get('refreshToken')?.value;
+        
+        if (refreshToken && !path.startsWith('/api/auth/refresh')) {
+          // For API routes, return 401 with specific error to trigger client-side refresh
+          if (isApiRoute) {
+            return NextResponse.json(
+              { error: 'Token expired', code: 'TOKEN_EXPIRED' },
+              { status: 401 }
+            );
+          }
+          
+          // For web routes, redirect to login
+          const response = NextResponse.redirect(new URL('/login', request.url));
+          response.cookies.delete('accessToken');
+          return response;
+        }
       }
       
       if (isApiRoute) {

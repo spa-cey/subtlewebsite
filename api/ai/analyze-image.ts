@@ -99,10 +99,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    // Calculate cost for response
+    const cost = completion.usage ? calculateCost(
+      validatedData.model || 'gpt-4o',
+      completion.usage.prompt_tokens || 0,
+      completion.usage.completion_tokens || 0
+    ) : 0;
+
     res.status(200).json({
       success: true,
       response: completion.choices[0].message.content,
-      usage: completion.usage
+      usage: completion.usage,
+      cost
     });
 
   } catch (error: any) {

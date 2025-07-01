@@ -12,13 +12,13 @@ export interface AuthenticatedRequest extends VercelRequest {
 }
 
 export function generateTokens(userId: string) {
-  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '1h' });
-  const refreshToken = jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, { expiresIn: '7d' });
+  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
+  const refreshToken = jwt.sign({ userId, type: 'refresh' }, JWT_SECRET, { expiresIn: '30d' });
   
   return {
     accessToken,
     refreshToken,
-    expiresIn: 3600 // 1 hour in seconds
+    expiresIn: 7 * 24 * 60 * 60 // 7 days in seconds
   };
 }
 
@@ -38,18 +38,37 @@ export async function authenticateToken(
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
+      where: { id: decoded.userId },
+      include: {
+        sessions: {
+          where: {
+            invalidatedAt: null,
+            expiresAt: {
+              gt: new Date()
+            }
+          },
+          take: 1
+        }
+      }
     });
 
     if (!user) {
-      res.status(401).json({ success: false, error: 'Invalid token' });
+      console.log('[Auth] User not found for token:', decoded.userId);
+      res.status(401).json({ success: false, error: 'User not found' });
       return false;
     }
 
     req.user = { id: user.id, email: user.email };
     return true;
   } catch (error) {
-    res.status(401).json({ success: false, error: 'Invalid token' });
+    console.log('[Auth] Token verification failed:', error);
+    if (error instanceof jwt.TokenExpiredError) {
+      res.status(401).json({ success: false, error: 'Token expired', code: 'TOKEN_EXPIRED' });
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      res.status(401).json({ success: false, error: 'Invalid token', code: 'INVALID_TOKEN' });
+    } else {
+      res.status(401).json({ success: false, error: 'Authentication failed', code: 'AUTH_FAILED' });
+    }
     return false;
   }
 }

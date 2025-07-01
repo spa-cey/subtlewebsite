@@ -79,10 +79,10 @@ export default function BulkActionsBar({ selectedCount, onAction, onClear }: Bul
                     Enterprise
                   </button>
                   <button
-                    onClick={() => handleChangeTier('custom')}
+                    onClick={() => handleChangeTier('admin')}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    Custom
+                    Admin
                   </button>
                 </div>
               )}

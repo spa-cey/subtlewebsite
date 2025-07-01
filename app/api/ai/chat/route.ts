@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { decrypt } from '@/lib/encryption';
 
 const chatRequestSchema = z.object({
   messages: z.array(
@@ -13,6 +14,7 @@ const chatRequestSchema = z.object({
   model: z.enum(['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini']).optional(),
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().positive().optional(),
+  stream: z.boolean().optional(),
 });
 
 function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
@@ -43,37 +45,115 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = chatRequestSchema.parse(body);
 
-    // Check if using OpenAI directly or Azure OpenAI
-    const useAzure = process.env.USE_AZURE_OPENAI === 'true';
-    let openai: OpenAI;
+    // Get user with subscription info
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
 
-    if (useAzure) {
-      // Get user's Azure OpenAI config
-      const apiConfig = await prisma.azureOpenAIConfig.findFirst({
-        where: { userId },
-      });
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      );
+    }
 
-      if (!apiConfig) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'No API configuration found. Please configure your Azure OpenAI settings.',
+    // Check subscription tier
+    const subscriptionTier = user.subscriptionTier || 'free';
+    
+    // Free tier users don't have access to AI
+    if (subscriptionTier === 'free') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'AI features require a Pro or Enterprise subscription',
+          upgradeUrl: '/pricing',
+        },
+        { status: 402 } // Payment Required
+      );
+    }
+
+    // Check user's daily quota
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayUsage = await prisma.aIUsage.aggregate({
+      where: {
+        userId,
+        createdAt: {
+          gte: today,
+        },
+      },
+      _count: true,
+      _sum: {
+        totalTokens: true,
+        cost: true,
+      },
+    });
+
+    // Define limits based on subscription tier
+    const limits = {
+      pro: { dailyRequests: 1000, dailyTokens: 500000, dailyCost: 50 },
+      enterprise: { dailyRequests: 10000, dailyTokens: 5000000, dailyCost: 500 },
+    };
+
+    const userLimits = limits[subscriptionTier as keyof typeof limits] || limits.pro;
+
+    if (todayUsage._count >= userLimits.dailyRequests) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Daily request limit exceeded',
+          quotaStatus: {
+            tier: subscriptionTier,
+            usage: {
+              requests: todayUsage._count,
+              tokens: todayUsage._sum.totalTokens || 0,
+              cost: Number(todayUsage._sum.cost || 0),
+            },
+            limits: userLimits,
+            resetAt: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
           },
-          { status: 400 }
-        );
-      }
+        },
+        { status: 429 }
+      );
+    }
 
+    // Get system Azure OpenAI configuration
+    let openai: OpenAI;
+    
+    // Check if we should use Azure OpenAI
+    const systemAzureConfig = await prisma.systemAzureConfig.findFirst({
+      where: { 
+        isPrimary: true,
+        isActive: true,
+      },
+    });
+
+    if (systemAzureConfig) {
+      // Decrypt the API key
+      const decryptedApiKey = decrypt(systemAzureConfig.apiKey);
+      
       // Create Azure OpenAI client
       openai = new OpenAI({
-        apiKey: apiConfig.apiKey, // In production, decrypt this
-        baseURL: `${apiConfig.endpoint}/openai/deployments/${apiConfig.deploymentName}`,
-        defaultQuery: { 'api-version': apiConfig.apiVersion },
+        apiKey: decryptedApiKey,
+        baseURL: `${systemAzureConfig.endpoint}/openai/deployments/${systemAzureConfig.deploymentName}`,
+        defaultQuery: { 'api-version': systemAzureConfig.apiVersion },
         defaultHeaders: {
-          'api-key': apiConfig.apiKey, // In production, decrypt this
+          'api-key': decryptedApiKey,
         },
       });
     } else {
-      // Use standard OpenAI
+      // Fallback to standard OpenAI
+      if (!process.env.OPENAI_API_KEY) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'AI service not configured. Please contact support.',
+          },
+          { status: 503 }
+        );
+      }
+      
       openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
       });
@@ -105,10 +185,34 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Calculate updated quota status
+    const updatedUsage = {
+      requests: todayUsage._count + 1,
+      tokens: (todayUsage._sum.totalTokens || 0) + (completion.usage?.total_tokens || 0),
+      cost: Number(todayUsage._sum.cost || 0) + calculateCost(
+        validatedData.model || 'gpt-4',
+        completion.usage?.prompt_tokens || 0,
+        completion.usage?.completion_tokens || 0
+      ),
+    };
+
+    const quotaStatus = {
+      tier: subscriptionTier,
+      usage: updatedUsage,
+      limits: userLimits,
+      remaining: {
+        requests: userLimits.dailyRequests - updatedUsage.requests,
+        tokens: userLimits.dailyTokens - updatedUsage.tokens,
+        cost: userLimits.dailyCost - updatedUsage.cost,
+      },
+      resetAt: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+
     return NextResponse.json({
       success: true,
-      data: completion.choices[0].message,
+      content: completion.choices[0].message.content,
       usage: completion.usage,
+      quotaStatus,
     });
   } catch (error) {
     console.error('Chat error:', error);

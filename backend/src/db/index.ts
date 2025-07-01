@@ -8,7 +8,7 @@ declare global {
 
 // Initialize Prisma Client with configuration
 const prisma = globalThis.prisma || new PrismaClient({
-  log: ['query', 'error', 'warn'],
+  log: ['error', 'warn'],
   datasources: {
     db: {
       url: process.env.DATABASE_URL,

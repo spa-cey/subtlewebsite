@@ -4,75 +4,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a React-based web application built with Vite, TypeScript, and Tailwind CSS. It features a modern SaaS/product website for Subtle, a premium macOS AI assistant with landing pages and various UI components.
+This is a Next.js 14+ web application with TypeScript and Tailwind CSS. It features a modern SaaS website for Subtle, a premium macOS AI assistant with admin panel, authentication, and Azure OpenAI integration.
 
 ## Essential Commands
 
 ```bash
 # Development
-npm run dev          # Start development server on http://localhost:5173
+npm run dev          # Start Next.js development server (default port 3000)
 
-# Building
-npm run build        # Production build
-npm run build:dev    # Development build
-npm run preview      # Preview production build
+# Database
+npx prisma migrate dev --name [migration-name]  # Create new migration
+npx prisma generate  # Generate Prisma client
+npx prisma studio    # Open Prisma Studio GUI
+npx prisma db push   # Push schema changes without migration
 
-# Code Quality
-npm run lint         # Run ESLint for code quality checks
+# Common Tasks
+npm install          # Install all dependencies
+npm run postinstall  # Run after install (generates Prisma client)
 ```
 
-## Architecture and Code Patterns
 
-### Component Organization
-Components are organized by feature in `src/components/`:
-- `ui/` - Shadcn UI primitives and base components
-- `landing/` - Landing page specific components
-- `manage/` - Management feature components
-- `projects/` - Project-related components
-- `search/` - Search functionality components
 
-### Key Architectural Patterns
+## Development Workflows
 
-1. **Routing**: Centralized React Router v6 setup in App.tsx with PageTransition wrapper for all routes
-2. **State Management**: 
-   - React Context for global state (Auth, Theme)
-   - React Query for server state
-   - Local component state with useState
-3. **Styling**: Tailwind CSS with cn() utility for className merging
-4. **Components**: Shadcn UI components with CVA for variants
-5. **Animation**: AnimatedTransition wrapper and useAnimateIn hook for staggered reveals
+When implementing features or fixing issues, follow one of these structured workflows based on the task:
 
-### Context Provider Hierarchy
-```tsx
-QueryClientProvider
-  └── ThemeProvider
-      └── AuthProvider
-          └── TooltipProvider
-              └── App content
-```
+### Workflow 1: Explore → Plan → Confirm → Code → Commit
+Use this workflow for bug fixes and complex issues where the root cause needs investigation:
+1. **Explore**: Investigate the codebase to understand the issue's root cause
+2. **Plan**: Propose multiple solution approaches with pros/cons
+3. **Confirm**: Wait for user approval on the chosen approach
+4. **Code**: Implement the approved solution
+5. **Commit**: Create a descriptive commit with the changes
 
-### Important Conventions
+Example: Debugging issue #983 - investigate first, propose fixes, then implement after approval.
 
-1. **TypeScript**: Project uses TypeScript with relaxed settings (no implicit any allowed)
-2. **Imports**: Use `@/` alias for src directory imports
-3. **Component Props**: All components should have TypeScript interfaces
-4. **Animations**: Use existing animation utilities and patterns
-5. **Forms**: Use React Hook Form with Zod validation
+### Workflow 2: Write Tests → Commit → Code → Iterate → Commit
+Use this workflow for TDD (Test-Driven Development) when adding new features:
+1. **Write Tests**: Create tests that define expected behavior (they will fail initially)
+2. **Commit**: Commit the failing tests
+3. **Code**: Implement functionality to make tests pass
+4. **Iterate**: Refine implementation based on test results
+5. **Commit**: Commit the working implementation
 
-### Current Limitations
+Example: Adding link rendering to markdown utilities - write tests first, then implement.
 
-- No backend API integration implemented (only frontend)
-- No testing framework configured
-- No environment variables setup
-- Waitlist form only logs to console (TODO: backend integration)
-- No user authentication system implemented
+### Workflow 3: Write Code → Screenshot Result → Iterate
+Use this workflow for UI/UX implementations that need visual verification:
+1. **Write Code**: Implement the UI based on mockups or descriptions
+2. **Screenshot Result**: Use tools like Puppeteer to capture the rendered output
+3. **Iterate**: Compare with mockups and refine until matching
 
-### File Structure Patterns
-
-- Feature-based component grouping
-- Centralized types in `src/types/`
-- Mock data colocated with components
-- Custom hooks in `src/hooks/`
-- Utility functions split between `src/utils/` and `src/lib/`
-
-When making changes, follow the existing patterns for consistency, especially for component structure, animation usage, and TypeScript conventions.
+Example: Implementing a design from mock.png - build, screenshot, and iterate until pixel-perfect.
