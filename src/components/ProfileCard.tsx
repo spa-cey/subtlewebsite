@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { ExternalLink, Mail, Plus, User } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext-nextjs';
 
 export const ProfileCard: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
   if (!user) {
     return (
@@ -40,9 +40,9 @@ export const ProfileCard: React.FC = () => {
     }
   };
 
-  const displayName = profile?.fullName || user.fullName || user.email?.split('@')[0] || 'User';
+  const displayName = user.fullName || user.email?.split('@')[0] || 'User';
   const userEmail = user.email || '';
-  const avatarUrl = profile?.avatarUrl || user.avatarUrl;
+  const avatarUrl = user.avatarUrl;
   const joinDate = formatDate(user.createdAt);
   const isEmailVerified = !!user.emailVerified;
   const userBio = null; // user.user_metadata?.bio;

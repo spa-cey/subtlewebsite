@@ -1,5 +1,5 @@
 // Server-side logging utility for debugging
-// This will send logs to the Vite server console
+// This will send logs to the Next.js server console
 
 interface LogData {
   level: 'info' | 'warn' | 'error' | 'debug';
