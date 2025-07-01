@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
         tokens: {
           accessToken,
           refreshToken,
+          expiresIn: 900, // 15 minutes in seconds
         },
       },
       { status: 201 }

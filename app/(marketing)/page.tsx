@@ -48,7 +48,7 @@ export default function HomePage() {
       <div className="absolute bottom-1/3 left-0 w-[350px] h-[350px] rounded-full bg-primary/5 blur-3xl -z-10"></div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[100px] -z-10"></div>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24">
         <div className="flex flex-col">
           {/* Hero Section */}
           <HeroSection showTitle={showHero} />

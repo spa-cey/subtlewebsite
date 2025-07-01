@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext-nextjs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Shield } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -53,7 +53,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pt-24">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Welcome back, {user.fullName || user.email}!</h1>
         <p className="text-muted-foreground">Here's your dashboard overview</p>
@@ -98,12 +98,15 @@ export default function DashboardPage() {
             <CardDescription>Common tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button
-              className="w-full"
-              onClick={() => router.push('/chat')}
-            >
-              Start New Chat
-            </Button>
+            {user.role === 'admin' && (
+              <Button
+                className="w-full"
+                onClick={() => router.push('/admin')}
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                Admin Dashboard
+              </Button>
+            )}
             <Button
               variant="outline"
               className="w-full"

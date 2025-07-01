@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       tokens: {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
+        expiresIn: 900, // 15 minutes in seconds
       },
     });
 

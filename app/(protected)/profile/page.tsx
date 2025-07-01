@@ -49,7 +49,7 @@ export default function ProfilePage() {
 
   if (authLoading || profileLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 pt-24">
         <div className="max-w-6xl mx-auto">
           <Skeleton className="h-10 w-48 mb-8" />
           <div className="grid gap-6">
@@ -73,7 +73,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pt-24">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">My Profile</h1>

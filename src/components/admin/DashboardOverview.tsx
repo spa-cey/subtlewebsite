@@ -15,7 +15,7 @@ import {
   Send,
   FileText
 } from 'lucide-react';
-import { apiClient } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface MetricData {
   totalUsers: number;
@@ -68,6 +68,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, load
 };
 
 export default function DashboardOverview() {
+  const { toast } = useToast();
   const [metrics, setMetrics] = useState<MetricData>({
     totalUsers: 0,
     activeUsers30Days: 0,
@@ -93,23 +94,31 @@ export default function DashboardOverview() {
       setError(null);
       
       // Fetch admin stats from backend
-      const stats = await apiClient.getAdminStats();
-      console.log('Admin stats response:', stats);
+      const response = await fetch('/api/admin/stats');
+      const data = await response.json();
       
-      // Extract metrics from the stats response - note the nested structure
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch stats');
+      }
+      
+      console.log('Admin stats response:', data);
+      
+      // Extract metrics from the stats response - data is in data.stats
+      const stats = data.stats || {};
       const totalUsers = stats.users?.total || 0;
       const activeUsers30Days = stats.users?.active || 0;
-      const newUsersToday = stats.users?.new || 0;
-      const activeSubscriptions = stats.revenue?.activeSubscriptions || 0;
-      const mrr = (stats.revenue?.mrr || 0) / 100; // Convert from cents to dollars
-      const totalRevenue = (stats.revenue?.totalRevenue || 0) / 100; // Convert from cents to dollars
+      const newUsersToday = stats.users?.newThisMonth || 0; // Using newThisMonth as today for now
+      const activeSubscriptions = (stats.subscriptions?.pro || 0) + 
+                                  (stats.subscriptions?.enterprise || 0) + 
+                                  (stats.subscriptions?.basic || 0);
+      const mrr = stats.revenue?.mrr || 0; // Already in dollars from API
+      const totalRevenue = mrr * 12; // Annualized revenue estimate
 
       // Calculate real metrics based on actual data
-      // For growth metrics, we'd need historical data - for now, calculate based on new users
-      const userGrowthRate = totalUsers > 0 ? ((newUsersToday / totalUsers) * 100).toFixed(1) : 0;
+      const userGrowthRate = stats.users?.growth !== 'N/A' ? parseFloat(stats.users?.growth || '0') : 0;
       const hasProUsers = (stats.subscriptions?.pro || 0) > 0;
       const hasEnterpriseUsers = (stats.subscriptions?.enterprise || 0) > 0;
-      const revenueGrowth = hasProUsers || hasEnterpriseUsers ? 15.2 : 0; // Only show growth if we have paying users
+      const revenueGrowth = stats.revenue?.growth || 0;
       const churnRate = 0; // We don't have churn data yet
 
       setMetrics({
@@ -119,12 +128,17 @@ export default function DashboardOverview() {
         activeSubscriptions,
         totalRevenue: mrr, // Use MRR as the monthly revenue
         revenueGrowth,
-        userGrowth: Number(userGrowthRate),
+        userGrowth: userGrowthRate,
         churnRate
       });
     } catch (err) {
       console.error('Error fetching metrics:', err);
       setError('Failed to load metrics. Please try again.');
+      toast({
+        title: 'Error',
+        description: 'Failed to load dashboard metrics',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }

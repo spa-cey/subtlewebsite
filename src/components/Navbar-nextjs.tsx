@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Brain, Moon, Sun, Info, Download, Code, User, LogOut } from 'lucide-react';
+import { Brain, Moon, Sun, Info, Download, Code, User, LogOut, Shield } from 'lucide-react';
 import { useRippleEffect } from '@/lib/animations';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -37,6 +37,14 @@ interface NavItemProps {
   onClick: () => void;
   hasSubmenu?: boolean;
   children?: React.ReactNode;
+}
+
+interface SubMenuItemProps {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
 }
 
 const NavItem = ({ href, icon, label, active, onClick, hasSubmenu, children }: NavItemProps) => {
@@ -107,80 +115,116 @@ const NavItem = ({ href, icon, label, active, onClick, hasSubmenu, children }: N
   );
 };
 
+const SubMenuItem = ({ href, icon, label, active, onClick }: SubMenuItemProps) => {
+  return (
+    <Link 
+      href={href} 
+      className={cn(
+        "flex items-center gap-2 p-2 rounded-md hover:bg-primary/10 hover:text-primary transition-all duration-300",
+        active ? "bg-primary/10 text-primary" : ""
+      )}
+      onClick={onClick}
+    >
+      <span className={cn(
+        "transition-all duration-300",
+        active ? "text-primary" : "text-foreground/60"
+      )}>
+        {icon}
+      </span>
+      <span>{label}</span>
+    </Link>
+  );
+};
+
 export const Navbar = () => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [active, setActive] = useState('overview');
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   
-  const navItems = [
-    { href: '/', icon: <Brain className="w-5 h-5" />, label: 'Home' },
-    { href: '/features', icon: <Info className="w-5 h-5" />, label: 'Features' },
-    { href: '/download', icon: <Download className="w-5 h-5" />, label: 'Download' },
-    { href: '/pricing', icon: <Code className="w-5 h-5" />, label: 'Pricing' },
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  const handleNavItemClick = (id: string) => {
+    setActive(id);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const subtleSubmenu = [
+    { href: '/', icon: <Info size={18} />, label: 'Overview', id: 'overview' },
+    { href: '/features', icon: <Code size={18} />, label: 'Features', id: 'features' },
+    { href: '/download', icon: <Download size={18} />, label: 'Download', id: 'download' },
   ];
+  
+  const navItems: Array<{
+    id: string;
+    href: string;
+    icon: React.ReactNode;
+    label: string;
+  }> = [];
   
   return (
     <TooltipProvider>
-      <nav 
-        className={cn(
-          "fixed left-0 top-0 h-full glass-medium border-r border-border transition-all duration-300 z-50",
-          isExpanded ? "w-64" : "w-20"
-        )}
-        onMouseEnter={() => setIsExpanded(true)}
-        onMouseLeave={() => setIsExpanded(false)}
-      >
-        <div className="flex flex-col h-full p-4">
-          {/* Logo */}
-          <div className="mb-8">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-                <Brain className="w-8 h-8 text-white" />
-              </div>
-              {isExpanded && (
-                <h1 className="text-2xl font-bold">Subtle</h1>
-              )}
-            </Link>
-          </div>
-          
-          {/* Nav Items */}
-          <div className="flex-1 space-y-2">
-            {navItems.map((item) => (
-              <NavItem
-                key={item.href}
+      <header className="glass-panel fixed top-6 left-1/2 transform -translate-x-1/2 z-40 rounded-lg px-1 py-1">
+        <nav className="flex items-center">
+          {/* Subtle with submenu */}
+          <NavItem
+            href="#"
+            icon={<img src="/Subtle_LOGO-nobackground.png" alt="Subtle" className="w-6 h-6" />}
+            label="Subtle"
+            active={['overview', 'features', 'download'].includes(active)}
+            onClick={() => {}}
+            hasSubmenu={true}
+          >
+            {subtleSubmenu.map((item) => (
+              <SubMenuItem
+                key={item.id}
                 href={item.href}
                 icon={item.icon}
                 label={item.label}
-                active={pathname === item.href}
-                onClick={() => {}}
+                active={active === item.id}
+                onClick={() => handleNavItemClick(item.id)}
               />
             ))}
-          </div>
+          </NavItem>
           
-          {/* Bottom Actions */}
-          <div className="space-y-2">
+          {/* Other nav items */}
+          {navItems.map((item) => (
+            <NavItem
+              key={item.id}
+              href={item.href}
+              icon={item.icon}
+              label={item.label}
+              active={active === item.id}
+              onClick={() => handleNavItemClick(item.id)}
+            />
+          ))}
+          
+          {/* Right Actions */}
+          <div className="flex items-center ml-auto gap-2">
             {/* Theme Toggle */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-lg"
                   onClick={toggleTheme}
-                  className={cn(
-                    "relative flex items-center justify-center w-full px-4 py-3 rounded-lg transition-all duration-300",
-                    "hover:bg-primary/10 hover:text-primary text-foreground/80"
-                  )}
                 >
-                  {theme === 'light' ? (
-                    <Moon className="w-5 h-5" />
+                  {mounted ? (
+                    theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />
                   ) : (
-                    <Sun className="w-5 h-5" />
+                    <div className="w-5 h-5" />
                   )}
-                  {isExpanded && (
-                    <span className="ml-2 font-medium">Toggle Theme</span>
-                  )}
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Toggle Theme</p>
+                <p>Toggle {mounted && theme === 'dark' ? 'light' : 'dark'} mode</p>
               </TooltipContent>
             </Tooltip>
             
@@ -188,25 +232,26 @@ export const Navbar = () => {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    className={cn(
-                      "relative flex items-center justify-center w-full px-4 py-3 rounded-lg transition-all duration-300",
-                      "hover:bg-primary/10 hover:text-primary text-foreground/80"
-                    )}
-                  >
-                    <Avatar className="w-5 h-5">
-                      <AvatarImage src={user.avatarUrl || undefined} alt={user.fullName || user.email} />
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.avatarUrl || undefined} />
                       <AvatarFallback>
-                        {(user.fullName || user.email).charAt(0).toUpperCase()}
+                        {user.email?.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    {isExpanded && (
-                      <span className="ml-2 font-medium truncate">{user.fullName || user.email}</span>
-                    )}
-                  </button>
+                  </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user.fullName || user.email}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard">
@@ -220,25 +265,34 @@ export const Navbar = () => {
                       Profile
                     </Link>
                   </DropdownMenuItem>
+                  {user.role === 'admin' && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin">
+                        <Shield className="mr-2 h-4 w-4" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>
+                  <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <NavItem
-                href="/login"
-                icon={<User className="w-5 h-5" />}
-                label="Sign In"
-                active={pathname === '/login'}
-                onClick={() => {}}
-              />
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/login">Sign In</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link href="/signup">Sign Up</Link>
+                </Button>
+              </div>
             )}
           </div>
-        </div>
-      </nav>
+        </nav>
+      </header>
     </TooltipProvider>
   );
 };

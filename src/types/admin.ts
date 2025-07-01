@@ -16,9 +16,9 @@ export interface User {
   metadata?: Record<string, any>;
 }
 
-export type UserRole = 'user' | 'support' | 'admin' | 'super_admin';
+export type UserRole = 'free' | 'pro' | 'enterprise' | 'admin';
 export type UserStatus = 'active' | 'suspended' | 'deleted';
-export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'enterprise' | 'custom';
+export type SubscriptionTier = 'free' | 'pro' | 'enterprise' | 'admin';
 
 export interface UserFilters {
   search: string;
@@ -104,10 +104,10 @@ export interface AuditLog {
 
 // Permission Types
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  user: [],
-  support: ['view_users', 'add_notes'],
-  admin: ['view_users', 'edit_users', 'add_notes', 'change_subscription', 'suspend_users'],
-  super_admin: ['view_users', 'edit_users', 'add_notes', 'change_subscription', 'suspend_users', 'delete_users', 'impersonate_users', 'change_roles']
+  free: [],
+  pro: ['priority_support'],
+  enterprise: ['priority_support', 'custom_integrations'],
+  admin: ['view_users', 'edit_users', 'add_notes', 'change_subscription', 'suspend_users', 'delete_users', 'impersonate_users', 'change_roles', 'system_admin']
 };
 
 export const hasPermission = (userRole: UserRole, permission: string): boolean => {

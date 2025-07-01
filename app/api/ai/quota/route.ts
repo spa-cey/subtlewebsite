@@ -36,12 +36,6 @@ export async function GET(request: NextRequest) {
         maxTokensPerRequest: 100,
         models: ['gpt-3.5-turbo'],
       },
-      basic: {
-        dailyRequests: 100,
-        monthlyTokens: 100000,
-        maxTokensPerRequest: 1000,
-        models: ['gpt-3.5-turbo', 'gpt-4'],
-      },
       pro: {
         dailyRequests: -1, // unlimited
         monthlyTokens: 1000000,
@@ -54,11 +48,11 @@ export async function GET(request: NextRequest) {
         maxTokensPerRequest: 8000,
         models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-vision-preview', 'gpt-4-turbo'],
       },
-      custom: {
+      admin: {
         dailyRequests: -1,
         monthlyTokens: -1,
-        maxTokensPerRequest: 8000,
-        models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-vision-preview', 'gpt-4-turbo'],
+        maxTokensPerRequest: -1, // unlimited
+        models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-vision-preview', 'gpt-4-turbo', 'gpt-4-turbo-preview'],
       },
     };
 

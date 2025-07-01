@@ -2,24 +2,103 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext-nextjs';
 import DashboardOverview from '@/components/admin/DashboardOverview';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import UserManager from '@/components/admin/UserManager';
+import BillingManager from '@/components/admin/BillingManager';
+import ConfigurationManager from '@/components/admin/ConfigurationManager';
+import Analytics from '@/components/admin/Analytics';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
+  Shield,
   Users, 
   CreditCard, 
   BarChart3, 
   Settings, 
-  Shield,
-  AlertCircle 
+  AlertCircle,
+  Menu,
+  X,
+  ArrowLeft,
+  FileText,
+  HelpCircle,
+  Database,
+  Home
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type AdminModule = 'overview' | 'users' | 'billing' | 'config' | 'analytics' | 'audit' | 'support' | 'content';
+
+interface NavItem {
+  id: AdminModule;
+  label: string;
+  icon: React.ElementType;
+  component?: React.ReactNode;
+  implemented: boolean;
+}
 
 export default function AdminDashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeModule, setActiveModule] = useState<AdminModule>('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navItems: NavItem[] = [
+    {
+      id: 'overview',
+      label: 'Dashboard Overview',
+      icon: Home,
+      component: <DashboardOverview />,
+      implemented: true
+    },
+    {
+      id: 'users',
+      label: 'User Management',
+      icon: Users,
+      component: <UserManager />,
+      implemented: true
+    },
+    {
+      id: 'billing',
+      label: 'Subscriptions & Billing',
+      icon: CreditCard,
+      component: <BillingManager />,
+      implemented: true
+    },
+    {
+      id: 'config',
+      label: 'System Configuration',
+      icon: Settings,
+      component: <ConfigurationManager />,
+      implemented: true
+    },
+    {
+      id: 'analytics',
+      label: 'Analytics & Reports',
+      icon: BarChart3,
+      component: <Analytics />,
+      implemented: true
+    },
+    {
+      id: 'audit',
+      label: 'Audit Logs',
+      icon: FileText,
+      implemented: false
+    },
+    {
+      id: 'support',
+      label: 'Support Tools',
+      icon: HelpCircle,
+      implemented: false
+    },
+    {
+      id: 'content',
+      label: 'Content Management',
+      icon: Database,
+      implemented: false
+    },
+  ];
 
   useEffect(() => {
     if (!loading && (!user || user.role !== 'admin')) {
@@ -51,122 +130,110 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const tabs = [
-    { value: 'overview', label: 'Overview', icon: BarChart3 },
-    { value: 'users', label: 'Users', icon: Users },
-    { value: 'billing', label: 'Billing', icon: CreditCard },
-    { value: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { value: 'config', label: 'Configuration', icon: Settings },
-    { value: 'security', label: 'Security', icon: Shield },
-  ];
+  const currentNavItem = navItems.find(item => item.id === activeModule);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-        <p className="text-muted-foreground">
-          Manage your application and monitor system health
-        </p>
-      </div>
+    <div className="min-h-screen flex">
+      {/* Mobile sidebar toggle */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="lg:hidden fixed top-20 left-4 z-50 p-2 bg-background border rounded-lg shadow-lg"
+      >
+        {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-2 md:grid-cols-6 gap-2 h-auto p-1">
-          {tabs.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              className="flex items-center gap-2 py-3"
-            >
-              <tab.icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{tab.label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/* Sidebar */}
+      <aside className={cn(
+        "fixed lg:sticky top-0 left-0 z-40 w-64 h-screen bg-background/95 backdrop-blur-sm",
+        "transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+        "border-r overflow-y-auto",
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      )}>
+        <div className="p-6 border-b">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft size={20} />
+            <span>Back to Dashboard</span>
+          </Link>
+        </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <DashboardOverview />
-        </TabsContent>
+        <div className="p-6 border-b">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-lg">
+              <Shield className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Admin Panel</h2>
+              <p className="text-sm text-muted-foreground">System Management</p>
+            </div>
+          </div>
+        </div>
 
-        <TabsContent value="users" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>
-                View and manage all users in your system
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                User management component would go here
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <nav className="p-4 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeModule === item.id;
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (item.implemented) {
+                    setActiveModule(item.id);
+                    setSidebarOpen(false);
+                  }
+                }}
+                disabled={!item.implemented}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-lg'
+                    : item.implemented
+                      ? 'hover:bg-accent'
+                      : 'text-muted-foreground cursor-not-allowed'
+                )}
+              >
+                <Icon size={20} />
+                <span className="font-medium">{item.label}</span>
+                {!item.implemented && (
+                  <span className="ml-auto text-xs bg-muted px-2 py-1 rounded">
+                    Coming Soon
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
 
-        <TabsContent value="billing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Billing & Revenue</CardTitle>
-              <CardDescription>
-                Monitor revenue and manage billing settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Billing management component would go here
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="container mx-auto px-4 py-8 pt-24 max-w-7xl">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">
+              {currentNavItem?.label || 'Admin Dashboard'}
+            </h1>
+            <p className="text-muted-foreground">
+              {activeModule === 'overview' && 'Monitor system health and key metrics'}
+              {activeModule === 'users' && 'Manage user accounts and permissions'}
+              {activeModule === 'billing' && 'Handle subscriptions and billing'}
+              {activeModule === 'config' && 'Configure system settings'}
+              {activeModule === 'analytics' && 'View detailed analytics and reports'}
+              {activeModule === 'audit' && 'Review system audit logs'}
+              {activeModule === 'support' && 'Access support tools and utilities'}
+              {activeModule === 'content' && 'Manage content and resources'}
+            </p>
+          </div>
 
-        <TabsContent value="analytics" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Analytics</CardTitle>
-              <CardDescription>
-                Deep dive into usage patterns and metrics
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Analytics component would go here
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="config" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>System Configuration</CardTitle>
-              <CardDescription>
-                Configure AI models and system settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Configuration component would go here
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>
-                Monitor security events and configure policies
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Security settings component would go here
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          {/* Module Content */}
+          <div className="bg-background/95 backdrop-blur-sm rounded-xl shadow-xl border">
+            {currentNavItem?.component}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

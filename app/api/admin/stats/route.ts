@@ -55,8 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Revenue calculations (mock data for demo)
     const monthlyRevenue = {
-      mrr: (subscriptionStats.basic || 0) * 10 + 
-           (subscriptionStats.pro || 0) * 20 + 
+      mrr: (subscriptionStats.pro || 0) * 20 + 
            (subscriptionStats.enterprise || 0) * 100,
       growth: 15.3, // Mock growth percentage
     };
