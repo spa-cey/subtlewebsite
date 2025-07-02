@@ -225,8 +225,13 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Always use the model from Azure configuration
+        const modelToUse = systemAzureConfig ? systemAzureConfig.modelName : model;
+        
+        console.log(`Using model: ${modelToUse}${image ? ' (image attached)' : ''}`);
+        
         const completion = await openai.chat.completions.create({
-          model: systemAzureConfig ? systemAzureConfig.modelName : model,
+          model: modelToUse,
           messages: processedMessages,
           temperature: systemAzureConfig?.temperature ?? temperature,
           max_tokens: systemAzureConfig?.maxTokens || undefined,
